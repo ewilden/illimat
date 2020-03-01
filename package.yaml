@@ -10,6 +10,14 @@ extra-source-files:
 - README.md
 - ChangeLog.md
 
+ghc-options:
+- -Wall
+- -fwarn-tabs
+- -fwarn-incomplete-uni-patterns
+- -fwarn-incomplete-record-updates
+- -Wno-unused-top-binds
+- -Wno-unused-matches
+
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
 # category:            Web
@@ -23,6 +31,7 @@ dependencies:
 - base >= 4.7 && < 5
 - classy-prelude
 - mtl
+- lens
 
 default-extensions:
 - NoImplicitPrelude
