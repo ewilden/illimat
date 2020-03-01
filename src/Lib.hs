@@ -28,6 +28,7 @@ data GameState = GameState
     , gamePlayerState :: [PlayerState]
     , gameDeck :: Deck
     , gameUnusedLuminaries :: [Luminary]
+    , gameChildrenCards :: [Card]
     } deriving (Show)
 
 boxIdent :: (a -> a) -> (a -> Identity a)
@@ -82,7 +83,6 @@ data BoardState = BoardState
 data FieldState = FieldState 
     { fieldCards :: [CardStack]
     , fieldLuminary :: LuminaryState
-    , fieldChildrenCards :: [Card]
     } deriving (Show)
 
 data LuminaryState = FaceUp Luminary | FaceDown Luminary | NoLuminary deriving (Show, Eq)
@@ -164,11 +164,12 @@ emptyGameState numPlayers initSummerDir startingDeck startingLuminaryDeck =
     , gamePlayerState = replicate numPlayers emptyPlayer
     , gameDeck = startingDeck
     , gameUnusedLuminaries = startingLuminaryDeck
+    , gameChildrenCards = []
     }
     where
         emptyBoard = BoardState emptyField emptyField emptyField emptyField
         emptyPlayer = PlayerState [] 0 [] []
-        emptyField = FieldState [] NoLuminary []
+        emptyField = FieldState [] NoLuminary
 
 twoPlayerDefaultState :: GameState
 twoPlayerDefaultState = emptyGameState 2 N allCardsMinusStars allLuminaries
@@ -256,8 +257,8 @@ removeCardStackFromField cardStack dir = do
     case cardStack `elem` (fieldCards field) of
         True -> do
                     put $ mapField dir 
-                      (\(FieldState cards luminary childrenCards) -> 
-                          FieldState (filter (/= cardStack) cards) luminary childrenCards) currGS
+                      (\(FieldState cards luminary) -> 
+                          FieldState (filter (/= cardStack) cards) luminary) currGS
                     return ()
         False -> returnLeft "Card stack not in field!"
 
@@ -468,13 +469,34 @@ resolveLuminaryReveal lum dirLumWasIn =
         currGS <- get
         case (gameDeck currGS) of
           a:b:c:rest -> do
-            put $ currGS {gameDeck = rest}
-            updateState $ mapFieldM dirLumWasIn (\fs -> return $ fs {fieldChildrenCards = [a,b,c]})
+            put $ currGS {gameDeck = rest, gameChildrenCards = [a,b,c]}
             defaultBehavior
           _ -> returnLeft "Not enough cards to reserve for the Children!"
 
 resolveLuminaryTake :: Luminary -> PlayerIndex -> FailableGameAction ()
-resolveLuminaryTake lum playerIndex = return () -- TODO implement
+resolveLuminaryTake lum playerIndex = case lum of
+  Rake -> do
+    let 
+      giveCardFromAToB card aInd bInd = do
+        updateState $ liftPlayerS aInd (\ps -> return $ ps {playerHarvestPile = (playerHarvestPile ps) `setDelete` card})
+        updateState $ liftPlayerS bInd (\ps -> return $ ps {playerHarvestPile = card : (playerHarvestPile ps)})
+      filterForNonFoolSummer = filter $ \(Card val season) -> season == CSummer && val != Fool
+      filterForSummer = filter $ \(Card _ season) -> season == CSummer
+      grabSummerCardFrom ind = do
+        targetPlayer <- getPlayerS ind
+        case filterForNonFoolSummer (playerHand targetPlayer) of
+          [] -> case filterForSummer (playerHand targetPlayer) of
+            [] -> return ()
+            h:tl -> giveCardFromAToB h ind playerIndex
+          h:tl -> giveCardFromAToB h ind playerIndex
+    numPlayers <- withS $ (length . gamePlayerState)
+    seqDo $ map grabSummerCardFrom (filter (/= playerIndex) (take numPlayers [0..]))
+  Children -> do
+    currChildrenCards <- withS gameChildrenCards
+    updateState (\gs -> return $ gs {gameChildrenCards = []})
+    updateState $ liftPlayerS playerIndex (\ps -> return $ ps {playerHarvestPile = currChildrenCards ++ (playerHarvestPile ps)})
+  _ -> return ()
+
         
 cardsCanHarvest :: [Card] -> [CardStack] -> Bool
 cardsCanHarvest cardsUsed targetStacks = any (\handSum -> canHarvestWithNum handSum targetStacks) possibleHandSums
