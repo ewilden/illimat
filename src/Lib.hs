@@ -27,6 +27,7 @@ data GameState = GameState
     , gameBoardState :: BoardState
     , gamePlayerState :: [PlayerState]
     , gameDeck :: Deck
+    , gameUnusedLuminaries :: [Luminary]
     } deriving (Show)
 
 boxIdent :: (a -> a) -> (a -> Identity a)
@@ -37,6 +38,9 @@ unboxIdent f = (\(Identity a) -> a) . f
 
 mapIllimat :: (IllimatState -> IllimatState) -> GameState -> GameState
 mapIllimat f gs = gs { gameIllimatState = f $ gameIllimatState gs }
+
+mapIllimatM :: (Monad m) => (IllimatState -> m IllimatState) -> GameState -> m GameState
+mapIllimatM f gs = (\is -> gs { gameIllimatState = is}) <$> (f $ gameIllimatState gs)
 
 mapBoard :: (BoardState -> BoardState) -> GameState -> GameState
 mapBoard = unboxIdent . mapBoardM . boxIdent
@@ -85,6 +89,7 @@ data BoardState = BoardState
 data FieldState = FieldState 
     { fieldCards :: [CardStack]
     , fieldLuminary :: LuminaryState
+    , fieldChildrenCards :: [Card]
     } deriving (Show)
 
 data LuminaryState = FaceUp Luminary | FaceDown Luminary | NoLuminary deriving (Show, Eq)
@@ -158,21 +163,22 @@ allCardsMinusStars = filter notStar allCards
 allLuminaries :: LuminaryDeck
 allLuminaries = allEnum
 
-emptyGameState :: Int -> Direction -> Deck -> GameState
-emptyGameState numPlayers initSummerDir startingDeck =
+emptyGameState :: Int -> Direction -> Deck -> LuminaryDeck -> GameState
+emptyGameState numPlayers initSummerDir startingDeck startingLuminaryDeck =
     GameState
-    { gameIllimatState = IllimatState initSummerDir 4
+    { gameIllimatState = IllimatState initSummerDir numPlayers
     , gameBoardState = emptyBoard
     , gamePlayerState = replicate numPlayers emptyPlayer
     , gameDeck = startingDeck
+    , gameUnusedLuminaries = startingLuminaryDeck
     }
     where
         emptyBoard = BoardState emptyField emptyField emptyField emptyField
         emptyPlayer = PlayerState [] 0 [] []
-        emptyField = FieldState [] NoLuminary
+        emptyField = FieldState [] NoLuminary []
 
 twoPlayerDefaultState :: GameState
-twoPlayerDefaultState = emptyGameState 2 N allCardsMinusStars   
+twoPlayerDefaultState = emptyGameState 2 N allCardsMinusStars allLuminaries
 
 type PlayerIndex = Int
 type GameStateM = State GameState
@@ -209,13 +215,22 @@ dealCardToPlayer playerIndex = StateT $ \gameState ->
                 }
             )
 
-deal3CardsToField :: Direction -> FailableGameAction ()
-deal3CardsToField fieldDir = do
-  currDeck <- withS gameDeck
+dealUntilFieldHasNCards :: Int -> Direction -> FailableGameAction ()
+dealUntilFieldHasNCards n fieldDir = do
   currGS <- get
-  case currDeck of
-    a:b:c:rest -> put $ mapField fieldDir (\fs -> fs { fieldCards = (toStack <$> [a, b, c]) ++ (fieldCards fs) }) currGS
-    _ -> returnLeft "Less than 3 cards remaining in the deck."
+  let currDeck = gameDeck currGS
+      currField = fieldFromDir fieldDir currGS
+      cardsToDeal = max 0 (n - (length $ fieldCards currField))
+  if
+    (length currDeck) >= cardsToDeal
+  then do
+    updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldCards = (toStack <$> (take cardsToDeal currDeck))})
+    updateState $ (\gs -> return $ gs {gameDeck = drop cardsToDeal currDeck})
+  else
+    returnLeft "Didn't have enough cards to re-seed the field!"
+
+deal3CardsToField :: Direction -> FailableGameAction ()
+deal3CardsToField fieldDir = dealUntilFieldHasNCards 3 fieldDir
 
 doAllowingFailure :: FailableGameAction () -> FailableGameAction Bool
 doAllowingFailure action = do
@@ -274,6 +289,9 @@ withS :: (GameState -> a) -> FailableGameAction a
 withS f = do
             s <- get
             return $ f s
+
+updateStatePure :: (GameState -> GameState) -> FailableGameAction ()
+updateStatePure f = updateState (return . f)
 
 updateState :: (GameState -> Either String GameState) -> FailableGameAction ()
 updateState f = do
@@ -355,7 +373,8 @@ harvest playerIndex playedCards fieldDir targetStacks = do
     checkS playerHasPlayedCards "Can't harvest because player doesn't have the cards they're using!"
     checkS (cardsCanHarvest playedCards targetStacks) "The played cards can't harvest the targeted cards."
 
-    -- all checks passed; execute actual harvest
+    -- all checks passed; remove cards from player's hand, 
+    -- and put them & the targeted cards in their harvest stack
     removeCardsFromPlayersHand playerIndex playedCards
     seqDo (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
     addCardStacksToHarvestPile playerIndex targetStacks
@@ -379,8 +398,15 @@ harvest playerIndex playedCards fieldDir targetStacks = do
       -- resolve luminary
       fieldHadFaceDownLuminary <- case (fieldLuminary resultingFieldState) of
         FaceDown lum -> do
-          updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = FaceUp lum})
-          resolveLuminaryReveal lum
+          succeededInResolvingLuminary <- doAllowingFailure $ resolveLuminaryReveal lum fieldDir
+          if 
+            not succeededInResolvingLuminary
+          then
+            -- discard the luminary
+            updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = NoLuminary})
+          else
+            -- flip it face-up
+            updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = FaceUp lum})
           return True
         FaceUp lum -> do
           updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = NoLuminary})
@@ -390,7 +416,7 @@ harvest playerIndex playedCards fieldDir targetStacks = do
         NoLuminary -> return False
 
       if 
-        gaveOkus || fieldHadFaceDownLuminary 
+        gaveOkus && (not fieldHadFaceDownLuminary) -- let luminaries resolve re-seeding on reveal
       then
         (doAllowingFailure $ deal3CardsToField fieldDir) >> return ()
       else 
@@ -399,8 +425,50 @@ harvest playerIndex playedCards fieldDir targetStacks = do
     else
       return ()
 
-resolveLuminaryReveal :: Luminary -> FailableGameAction ()
-resolveLuminaryReveal lum = return () -- TODO implement
+setSeason :: Season -> Direction -> FailableGameAction ()
+setSeason Summer dir = do
+  currGS <- get
+  -- check if forest queen is anywhere
+  let forestQueenIsActive = (FaceUp Forest_Queen) `elem` luminaries
+      luminaries = map fieldLuminary fields
+      fields = map (\dir -> fieldFromDir dir currGS) (allEnum :: [Direction])
+      willBeSettingSummerForForestQueen =
+        (FaceUp Forest_Queen) == (fieldLuminary $ fieldFromDir dir currGS)
+  if 
+    forestQueenIsActive && not willBeSettingSummerForForestQueen
+  then
+    returnLeft "Can't change seasons; Forest Queen is active."
+  else
+    updateState $ mapIllimatM (\is -> return is {illSummerDir = dir})
+
+-- https://www.illimat.com/rulesclarifications/2017/11/27/clearing-and-refilling-fields
+resolveLuminaryReveal :: Luminary -> Direction -> FailableGameAction ()
+resolveLuminaryReveal lum dirLumWasIn = 
+  let defaultBehavior = deal3CardsToField dirLumWasIn in
+    case lum of
+      Union -> defaultBehavior
+      Maiden -> defaultBehavior
+      Rake -> defaultBehavior
+      River -> dealUntilFieldHasNCards 6 dirLumWasIn
+      Changeling -> defaultBehavior
+      Newborn -> do
+        let oppDir = succ $ succ $ dirLumWasIn
+        currOppField <- getFieldS oppDir
+        case (fieldLuminary currOppField) of
+          FaceDown oppLum -> do
+            updateState $ mapFieldM oppDir (\fs -> return $ fs {fieldLuminary = FaceUp oppLum})
+            resolveLuminaryReveal oppLum oppDir
+            defaultBehavior
+          FaceUp _ -> defaultBehavior
+          NoLuminary -> return () -- TODO: draw random luminary from remaining ones
+      Forest_Queen -> setSeason Summer dirLumWasIn
+      Children -> do
+        currGS <- get
+        case (gameDeck currGS) of
+          a:b:c:rest -> do
+            put $ currGS {gameDeck = rest}
+            updateState $ mapFieldM dirLumWasIn (\fs -> return $ fs {fieldChildrenCards = [a,b,c]})
+          _ -> returnLeft "Not enough cards for Children!"
 
 resolveLuminaryTake :: Luminary -> PlayerIndex -> FailableGameAction ()
 resolveLuminaryTake lum playerIndex = return () -- TODO implement
