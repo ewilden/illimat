@@ -50,13 +50,6 @@ mapBoardM f gs = (\bs -> gs { gameBoardState = bs }) <$> (f $ gameBoardState gs)
 
 mapField :: Direction -> (FieldState -> FieldState) -> GameState -> GameState
 mapField dir f = unboxIdent (mapFieldM dir (boxIdent f))
--- mapField f dir gs = mapBoard (applyFieldChange) gs
---     where applyFieldChange bs = 
---                                 case dir of
---                                     N -> bs { bsFieldN = f $ bsFieldN bs }
---                                     S -> bs { bsFieldS = f $ bsFieldS bs }
---                                     E -> bs { bsFieldE = f $ bsFieldE bs }
---                                     W -> bs { bsFieldW = f $ bsFieldW bs }
 
 mapFieldM :: (Monad m) => Direction -> (FieldState -> m FieldState) -> GameState -> m GameState
 mapFieldM dir f gs = do
@@ -262,7 +255,9 @@ removeCardStackFromField cardStack dir = do
     let field = fieldFromDir dir currGS
     case cardStack `elem` (fieldCards field) of
         True -> do
-                    put $ mapField dir (\(FieldState cards luminary) -> FieldState (filter (/= cardStack) cards) luminary) currGS
+                    put $ mapField dir 
+                      (\(FieldState cards luminary childrenCards) -> 
+                          FieldState (filter (/= cardStack) cards) luminary childrenCards) currGS
                     return ()
         False -> returnLeft "Card stack not in field!"
 
@@ -353,7 +348,6 @@ givePlayerOkus playerIndex = do
     prevNumOkuses > 0
   then do
     gs <- get
-    put $ (mapIllimat (\ill -> ill { illNumOkuses = prevNumOkuses - 1})) gs
     updateState $ liftPlayerS playerIndex (\ps -> return ps { playerNumOkuses = 1 + playerNumOkuses ps})
     updateState $ return . mapIllimat (\is -> is { illNumOkuses = (illNumOkuses is) - 1})
   else
@@ -431,7 +425,7 @@ setSeason Summer dir = do
   -- check if forest queen is anywhere
   let forestQueenIsActive = (FaceUp Forest_Queen) `elem` luminaries
       luminaries = map fieldLuminary fields
-      fields = map (\dir -> fieldFromDir dir currGS) (allEnum :: [Direction])
+      fields = map (\dir' -> fieldFromDir dir' currGS) (allEnum :: [Direction])
       willBeSettingSummerForForestQueen =
         (FaceUp Forest_Queen) == (fieldLuminary $ fieldFromDir dir currGS)
   if 
@@ -440,6 +434,7 @@ setSeason Summer dir = do
     returnLeft "Can't change seasons; Forest Queen is active."
   else
     updateState $ mapIllimatM (\is -> return is {illSummerDir = dir})
+setSeason notSummer dir = setSeason (succ notSummer) (succ dir)
 
 -- https://www.illimat.com/rulesclarifications/2017/11/27/clearing-and-refilling-fields
 resolveLuminaryReveal :: Luminary -> Direction -> FailableGameAction ()
@@ -449,26 +444,34 @@ resolveLuminaryReveal lum dirLumWasIn =
       Union -> defaultBehavior
       Maiden -> defaultBehavior
       Rake -> defaultBehavior
-      River -> dealUntilFieldHasNCards 6 dirLumWasIn
       Changeling -> defaultBehavior
+      Forest_Queen -> (setSeason Summer dirLumWasIn) >> defaultBehavior
+      River -> dealUntilFieldHasNCards 6 dirLumWasIn
       Newborn -> do
+        defaultBehavior
         let oppDir = succ $ succ $ dirLumWasIn
         currOppField <- getFieldS oppDir
         case (fieldLuminary currOppField) of
           FaceDown oppLum -> do
             updateState $ mapFieldM oppDir (\fs -> return $ fs {fieldLuminary = FaceUp oppLum})
             resolveLuminaryReveal oppLum oppDir
-            defaultBehavior
-          FaceUp _ -> defaultBehavior
-          NoLuminary -> return () -- TODO: draw random luminary from remaining ones
-      Forest_Queen -> setSeason Summer dirLumWasIn
+          FaceUp _ -> return ()
+          NoLuminary -> do
+            remainingLuminaries <- withS gameUnusedLuminaries
+            case remainingLuminaries of
+              h:tl -> (doAllowingFailure $ do 
+                  resolveLuminaryReveal h oppDir
+                  updateState $ mapFieldM oppDir (\fs -> return $ fs {fieldLuminary = FaceUp h}))
+                    >> (return ())                
+              _ -> return ()
       Children -> do
         currGS <- get
         case (gameDeck currGS) of
           a:b:c:rest -> do
             put $ currGS {gameDeck = rest}
             updateState $ mapFieldM dirLumWasIn (\fs -> return $ fs {fieldChildrenCards = [a,b,c]})
-          _ -> returnLeft "Not enough cards for Children!"
+            defaultBehavior
+          _ -> returnLeft "Not enough cards to reserve for the Children!"
 
 resolveLuminaryTake :: Luminary -> PlayerIndex -> FailableGameAction ()
 resolveLuminaryTake lum playerIndex = return () -- TODO implement
