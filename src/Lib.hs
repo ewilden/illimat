@@ -356,69 +356,69 @@ givePlayerOkus playerIndex = do
 
 harvest :: PlayerIndex -> [Card] -> Direction -> [CardStack] -> FailableGameAction ()
 harvest playerIndex playedCards fieldDir targetStacks = do
-    stacksAreInField <- tryAll (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
-    currSeason <- withS $ seasonFromDir fieldDir
-    currGS <- get
-    let maidenIsActive = (FaceUp Maiden) `elem` luminaries
-            where luminaries = map fieldLuminary fields
-                  fields = map (\dir -> fieldFromDir dir currGS) (allEnum :: [Direction])
-        playerHasPlayedCards = playerHasCards playerIndex playedCards currGS
-    checkNotS (currSeason == Winter && (not maidenIsActive)) "Can't harvest because it's winter!"
-    checkS stacksAreInField "Can't harvest because target stacks aren't in the field!"
-    checkS playerHasPlayedCards "Can't harvest because player doesn't have the cards they're using!"
-    checkS (cardsCanHarvest playedCards targetStacks) "The played cards can't harvest the targeted cards."
+  stacksAreInField <- tryAll (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
+  currSeason <- withS $ seasonFromDir fieldDir
+  currGS <- get
+  let maidenIsActive = (FaceUp Maiden) `elem` luminaries
+          where luminaries = map fieldLuminary fields
+                fields = map (\dir -> fieldFromDir dir currGS) (allEnum :: [Direction])
+      playerHasPlayedCards = playerHasCards playerIndex playedCards currGS
+  checkNotS (currSeason == Winter && (not maidenIsActive)) "Can't harvest because it's winter!"
+  checkS stacksAreInField "Can't harvest because target stacks aren't in the field!"
+  checkS playerHasPlayedCards "Can't harvest because player doesn't have the cards they're using!"
+  checkS (cardsCanHarvest playedCards targetStacks) "The played cards can't harvest the targeted cards."
 
-    -- all checks passed; remove cards from player's hand, 
-    -- and put them & the targeted cards in their harvest stack
-    removeCardsFromPlayersHand playerIndex playedCards
-    seqDo (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
-    addCardStacksToHarvestPile playerIndex targetStacks
-    addCardStacksToHarvestPile playerIndex (map toStack playedCards)
+  -- all checks passed; remove cards from player's hand, 
+  -- and put them & the targeted cards in their harvest stack
+  removeCardsFromPlayersHand playerIndex playedCards
+  seqDo (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
+  addCardStacksToHarvestPile playerIndex targetStacks
+  addCardStacksToHarvestPile playerIndex (map toStack playedCards)
 
-    -- re-fill player's hand up to 4
-    resultingPlayer <- getPlayerS playerIndex
-    doNTimes 
-      (4 - (length $ playerHand resultingPlayer))
-      (doAllowingFailure $ dealCardToPlayer playerIndex)
+  -- re-fill player's hand up to 4
+  resultingPlayer <- getPlayerS playerIndex
+  doNTimes 
+    (4 - (length $ playerHand resultingPlayer))
+    (doAllowingFailure $ dealCardToPlayer playerIndex)
 
-    -- check if player has cleared the field
-    resultingFieldState <- withS $ fieldFromDir fieldDir
-    let fieldNowEmpty = null $ fieldCards resultingFieldState
-    if
-      fieldNowEmpty
-    then do
-      -- try to give okus
-      gaveOkus <- doAllowingFailure $ givePlayerOkus playerIndex
+  -- check if player has cleared the field
+  resultingFieldState <- withS $ fieldFromDir fieldDir
+  let fieldNowEmpty = null $ fieldCards resultingFieldState
+  if
+    fieldNowEmpty
+  then do
+    -- try to give okus
+    gaveOkus <- doAllowingFailure $ givePlayerOkus playerIndex
 
-      -- resolve luminary
-      fieldHadFaceDownLuminary <- case (fieldLuminary resultingFieldState) of
-        FaceDown lum -> do
-          succeededInResolvingLuminary <- doAllowingFailure $ resolveLuminaryReveal lum fieldDir
-          if 
-            not succeededInResolvingLuminary
-          then
-            -- discard the luminary
-            updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = NoLuminary})
-          else
-            -- flip it face-up
-            updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = FaceUp lum})
-          return True
-        FaceUp lum -> do
+    -- resolve luminary
+    fieldHadFaceDownLuminary <- case (fieldLuminary resultingFieldState) of
+      FaceDown lum -> do
+        succeededInResolvingLuminary <- doAllowingFailure $ resolveLuminaryReveal lum fieldDir
+        if 
+          not succeededInResolvingLuminary
+        then
+          -- discard the luminary
           updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = NoLuminary})
-          updateState $ liftPlayerS playerIndex (\ps -> return $ ps { playerLuminaries = lum : (playerLuminaries ps)})
-          resolveLuminaryTake lum playerIndex
-          return False
-        NoLuminary -> return False
+        else
+          -- flip it face-up
+          updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = FaceUp lum})
+        return True
+      FaceUp lum -> do
+        updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = NoLuminary})
+        updateState $ liftPlayerS playerIndex (\ps -> return $ ps { playerLuminaries = lum : (playerLuminaries ps)})
+        resolveLuminaryTake lum playerIndex
+        return False
+      NoLuminary -> return False
 
-      if 
-        gaveOkus && (not fieldHadFaceDownLuminary) -- let luminaries resolve re-seeding on reveal
-      then
-        (doAllowingFailure $ deal3CardsToField fieldDir) >> return ()
-      else 
-        return ()
-      
-    else
+    if 
+      gaveOkus && (not fieldHadFaceDownLuminary) -- let luminaries resolve re-seeding on reveal
+    then
+      (doAllowingFailure $ deal3CardsToField fieldDir) >> return ()
+    else 
       return ()
+    
+  else
+    return ()
 
 setSeason :: Season -> Direction -> FailableGameAction ()
 setSeason Summer dir = do
