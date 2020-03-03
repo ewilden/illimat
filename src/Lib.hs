@@ -354,6 +354,33 @@ givePlayerOkus playerIndex = do
   else
     returnLeft "No more okuses!"
 
+
+resolveSeasonChange :: Card -> Direction -> FailableGameAction ()
+resolveSeasonChange (Card val cseason) dir = do
+  if 
+    val `elem` [Fool, Knight, Queen, King]
+  then
+    case cseason of 
+      CSummer -> (doAllowingFailure $ setSeason Summer dir) >> return ()
+      CAutumn -> (doAllowingFailure $ setSeason Autumn dir) >> return ()
+      CWinter -> (doAllowingFailure $ setSeason Winter dir) >> return ()
+      CSpring -> (doAllowingFailure $ setSeason Spring dir) >> return ()
+      CStars -> return ()
+  else
+    return ()
+
+
+sow :: Bool -> PlayerIndex -> Card -> Direction -> FailableGameAction ()
+sow ignoreAutumnForTheRake playerIndex card dir = do
+  currPlayer <- getPlayerS playerIndex
+  checkS (card `elem` (playerHand currPlayer)) 
+    "Player doesn't have the card they tried to sow!"
+  (field, season) <- withS $ fieldSFromDir dir
+  checkNotS (season == Autumn && (not ignoreAutumnForTheRake)) "Can't sow because it's autumn!"
+  updateState $ liftPlayerS playerIndex (\ps -> return ps {playerHand = (playerHand ps) `setDelete` card})
+  updateState $ mapFieldM dir (\fs -> return fs {fieldCards = (fromCard card) : (fieldCards fs)})
+  resolveSeasonChange card dir
+
 harvest :: PlayerIndex -> [Card] -> Direction -> [CardStack] -> FailableGameAction ()
 harvest playerIndex playedCards fieldDir targetStacks = do
   stacksAreInField <- tryAll (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
@@ -480,7 +507,7 @@ resolveLuminaryTake lum playerIndex = case lum of
       giveCardFromAToB card aInd bInd = do
         updateState $ liftPlayerS aInd (\ps -> return $ ps {playerHarvestPile = (playerHarvestPile ps) `setDelete` card})
         updateState $ liftPlayerS bInd (\ps -> return $ ps {playerHarvestPile = card : (playerHarvestPile ps)})
-      filterForNonFoolSummer = filter $ \(Card val season) -> season == CSummer && val != Fool
+      filterForNonFoolSummer = filter $ \(Card val season) -> season == CSummer && val /= Fool
       filterForSummer = filter $ \(Card _ season) -> season == CSummer
       grabSummerCardFrom ind = do
         targetPlayer <- getPlayerS ind
