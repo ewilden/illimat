@@ -89,7 +89,7 @@ data LuminaryState = FaceUp Luminary | FaceDown Luminary | NoLuminary deriving (
 data Luminary = Union | Maiden | Rake | River | Changeling | Newborn | Forest_Queen | Children
     deriving (Show, Eq, Enum, Bounded)
 
-data CardStack = CardStack CardVal [Card] deriving (Show, Eq)
+data CardStack = CardStack [Int] [Card] deriving (Show, Eq)
 data CardVal = Fool | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Knight | Queen | King 
     deriving (Show, Eq, Enum, Bounded)
 data Card = Card CardVal CardSeason deriving (Show, Eq)
@@ -218,7 +218,7 @@ dealUntilFieldHasNCards n fieldDir = do
   if
     (length currDeck) >= cardsToDeal
   then do
-    updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldCards = (toStack <$> (take cardsToDeal currDeck))})
+    updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldCards = (fromCard <$> (take cardsToDeal currDeck))})
     updateState $ (\gs -> return $ gs {gameDeck = drop cardsToDeal currDeck})
   else
     returnLeft "Didn't have enough cards to re-seed the field!"
@@ -276,7 +276,7 @@ tryAll :: [FailableGameAction a] -> FailableGameAction Bool
 tryAll actions = (all id) <$> (sequence (map try' actions))
 
 fromCard :: Card -> CardStack
-fromCard card@(Card val season) = CardStack val [card]
+fromCard card@(Card val season) = CardStack (toNumberVals val) [card]
 
 removeCardFromField :: Card -> Direction -> FailableGameAction ()
 removeCardFromField card dir = removeCardStackFromField (fromCard card) dir
@@ -339,9 +339,6 @@ removeCardsFromPlayersHand playerIndex cards = do
     (\prevPlayer -> return $
       prevPlayer {playerHand = (playerHand prevPlayer) `setSubtract` cards})
 
-toStack :: Card -> CardStack
-toStack card@(Card val _) = CardStack val [card]
-
 givePlayerOkus :: PlayerIndex -> FailableGameAction ()
 givePlayerOkus playerIndex = do
   prevNumOkuses <- withS (illNumOkuses . gameIllimatState)
@@ -370,14 +367,37 @@ resolveSeasonChange (Card val cseason) dir = do
     return ()
 
 
+
+stockpile :: PlayerIndex -> Card -> Direction -> [CardStack] -> Int -> FailableGameAction ()
+stockpile playerIndex card dir targetStacks desiredStackVal = do
+  currPlayer <- getPlayerS playerIndex
+  checkS (card `elem` (playerHand currPlayer)) 
+    "Player doesn't have the card they're trying to play!"
+  let stackIsValid = canHarvestWithNum desiredStackVal ((fromCard card):targetStacks)
+  checkS stackIsValid 
+    "Attempted stack is invalid (value doesn't match included cards)"
+  let resultingStack = CardStack [desiredStackVal] (card : ((\(CardStack _ cards) -> cards) =<< targetStacks))
+  checkS (any 
+    (\handCard -> [handCard] `cardsCanHarvest` [resultingStack]) 
+    ((playerHand currPlayer) `setDelete` card)) 
+    "Player doesn't have any cards that can harvest the new stockpile"
+  (_, season) <- withS $ fieldSFromDir dir
+  checkNotS (season == Spring) "Can't stockpile because it's spring!"
+
+  -- All checks passed
+  removeCardsFromPlayersHand playerIndex [card]
+  seqDo $ map (\stack -> removeCardStackFromField stack dir) targetStacks
+  updateState $ mapFieldM dir (\fs -> return $ fs { fieldCards = resultingStack : (fieldCards fs) })  
+  resolveSeasonChange card dir
+
 sow :: Bool -> PlayerIndex -> Card -> Direction -> FailableGameAction ()
 sow ignoreAutumnForTheRake playerIndex card dir = do
   currPlayer <- getPlayerS playerIndex
   checkS (card `elem` (playerHand currPlayer)) 
     "Player doesn't have the card they tried to sow!"
-  (field, season) <- withS $ fieldSFromDir dir
+  (_, season) <- withS $ fieldSFromDir dir
   checkNotS (season == Autumn && (not ignoreAutumnForTheRake)) "Can't sow because it's autumn!"
-  updateState $ liftPlayerS playerIndex (\ps -> return ps {playerHand = (playerHand ps) `setDelete` card})
+  removeCardsFromPlayersHand playerIndex [card]
   updateState $ mapFieldM dir (\fs -> return fs {fieldCards = (fromCard card) : (fieldCards fs)})
   resolveSeasonChange card dir
 
@@ -400,7 +420,9 @@ harvest playerIndex playedCards fieldDir targetStacks = do
   removeCardsFromPlayersHand playerIndex playedCards
   seqDo (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
   addCardStacksToHarvestPile playerIndex targetStacks
-  addCardStacksToHarvestPile playerIndex (map toStack playedCards)
+  addCardStacksToHarvestPile playerIndex (map fromCard playedCards)
+  
+  seqDo $ map (\card -> resolveSeasonChange card fieldDir) playedCards
 
   -- re-fill player's hand up to 4
   resultingPlayer <- getPlayerS playerIndex
@@ -524,7 +546,7 @@ resolveLuminaryTake lum playerIndex = case lum of
     updateState $ liftPlayerS playerIndex (\ps -> return $ ps {playerHarvestPile = currChildrenCards ++ (playerHarvestPile ps)})
   _ -> return ()
 
-        
+
 cardsCanHarvest :: [Card] -> [CardStack] -> Bool
 cardsCanHarvest cardsUsed targetStacks = any (\handSum -> canHarvestWithNum handSum targetStacks) possibleHandSums
     where possibleHandSums = allPossibleSums [] cardsUsed
@@ -537,9 +559,9 @@ cardsCanHarvest cardsUsed targetStacks = any (\handSum -> canHarvestWithNum hand
 
 canHarvestWithNum :: Int -> [CardStack] -> Bool
 canHarvestWithNum num stacks = duplicateStacksMatchNum && additionsWork
-    where duplicateStacksMatchNum = all (\(CardStack val cards) -> (length cards == 1) || num == toNumberValWithFoolAsFourteen val) stacks
+    where duplicateStacksMatchNum = all (\(CardStack val cards) -> (length cards == 1) || num `elem` val) stacks
           additionsWork = any (\interp -> canFormPartition num interp) stackInterpretations
-          stackInterpretations = foldr (\numVals accls -> (:) <$> numVals <*> accls) [[]] (map (\(CardStack val _) -> toNumberVals val) stacks)
+          stackInterpretations = foldr (\numVals accls -> (:) <$> numVals <*> accls) [[]] (map (\(CardStack val _) -> val) stacks)
 
 allSubsets :: [a] -> [[a]]
 allSubsets [] = [[]]
