@@ -226,6 +226,15 @@ dealUntilFieldHasNCards n fieldDir = do
 deal3CardsToField :: Direction -> FailableGameAction ()
 deal3CardsToField fieldDir = dealUntilFieldHasNCards 3 fieldDir
 
+dealLuminaryToField :: Direction -> FailableGameAction ()
+dealLuminaryToField dir = do
+  unusedLums <- withS gameUnusedLuminaries
+  case unusedLums of 
+    [] -> returnLeft "No remaining luminaries"
+    (h:tl) -> do
+      updateState (\gs -> return $ gs {gameUnusedLuminaries = tl})
+      updateState $ mapFieldM dir (\fs -> return $ fs { fieldLuminary = FaceDown h})
+
 doAllowingFailure :: FailableGameAction () -> FailableGameAction Bool
 doAllowingFailure action = do
   succeeded <- try' action
@@ -366,7 +375,19 @@ resolveSeasonChange (Card val cseason) dir = do
   else
     return ()
 
+doInitialGameSetup :: FailableGameAction ()
+doInitialGameSetup = do
+  currGS <- get
+  seqDo (map dealLuminaryToField (allEnum :: [Direction]))
+  seqDo (map deal3CardsToField (allEnum :: [Direction]))
+  seqDo (map (\(_, i) -> fillPlayersHandTo4 i) $ zip (gamePlayerState currGS) [0..])
 
+fillPlayersHandTo4 :: PlayerIndex -> FailableGameAction ()
+fillPlayersHandTo4 playerIndex = do
+  currPlayer <- getPlayerS playerIndex
+  doNTimes 
+    (4 - (length $ playerHand currPlayer))
+    (doAllowingFailure $ dealCardToPlayer playerIndex)
 
 stockpile :: PlayerIndex -> Card -> Direction -> [CardStack] -> Int -> FailableGameAction ()
 stockpile playerIndex card dir targetStacks desiredStackVal = do
