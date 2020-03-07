@@ -2,15 +2,25 @@ module Lib
     ( someFunc
     ) where
 
+import Prelude (head)
 import ClassyPrelude hiding (pred, succ)
 import qualified ClassyPrelude as Unsafe (pred, succ)
 import Control.Monad.State.Lazy
+import Data.Sort
 
 succ :: (Bounded a, Eq a, Enum a) => a -> a
 succ a = if a == maxBound then minBound else Unsafe.succ a
 
 pred :: (Bounded a, Eq a, Enum a) => a -> a
 pred a = if a == minBound then maxBound else Unsafe.pred a
+
+headOr :: a -> [a] -> a
+headOr _ (h:tl) = h
+headOr a [] = a
+
+tfOneZero :: Bool -> Int
+tfOneZero True = 1
+tfOneZero False = 0
 
 (!!) :: [a] -> Int -> Maybe a
 [] !! _ = Nothing
@@ -624,7 +634,55 @@ toNumberValWithFoolAsFourteen :: CardVal -> Int
 toNumberValWithFoolAsFourteen Two = 2
 toNumberValWithFoolAsFourteen otherVal = 1 + (toNumberValWithFoolAsFourteen $ pred otherVal)
 
--- test
 
--- harvest :: PlayerIndex -> Card -> Direction -> [Card] -> GameState -> Maybe ((), GameState)
--- harvest playerIndex card fieldDirection targetCards gameState =
+
+-- scoring
+score :: [PlayerState] -> [Int]
+score players =
+  let maxIndexSet :: (PlayerState -> PlayerState -> Ordering) -> [PlayerState] -> [PlayerIndex]
+      maxIndexSet cmp ls = map snd $ headOr [] $ groupSortBy paircmp (:) $ zip ls [0..]
+        where paircmp (a, i) (b, j) = cmp a b
+      biggerFirst :: (a -> Int) -> a -> a -> Ordering
+      biggerFirst f a b
+        | (f a) > (f b) = LT
+        | (f a) < (f b) = GT
+        | otherwise = EQ
+      tiebreak :: (a -> a -> Ordering) -> (a -> a -> Ordering) -> a -> a -> Ordering
+      tiebreak f g a b = case f a b of
+        EQ -> g a b
+        _ -> f a b
+      invert :: (a -> a -> Ordering) -> a -> a -> Ordering
+      invert f a b = swapLTGT $ f a b
+        where swapLTGT LT = GT
+              swapLTGT GT = LT
+              swapLTGT EQ = EQ
+      byHasRiver :: (PlayerState -> PlayerState -> Ordering)
+      byHasRiver = biggerFirst $ tfOneZero . (any (== River)) . playerLuminaries
+      byLuminaries :: (PlayerState -> PlayerState -> Ordering)
+      byLuminaries = biggerFirst countLuminaries
+      byMostCards :: (PlayerState -> PlayerState -> Ordering)
+      byMostCards = (biggerFirst (length . playerHarvestPile)) `tiebreak` byLuminaries
+      byMostSummers :: (PlayerState -> PlayerState -> Ordering)
+      byMostSummers = (biggerFirst (sum . (map pointForSummer) . playerHarvestPile)) `tiebreak` byLuminaries
+        where pointForSummer (Card _ CSummer) = 1
+              pointForSummer _ = 0
+      byMostWinters = (biggerFirst (sum . (map pointForWinter) . playerHarvestPile)) `tiebreak` (invert byLuminaries)
+        where pointForWinter (Card _ CWinter) = 1
+              pointForWinter _ = 0
+      onlyAllowOne :: [a] -> Maybe a
+      onlyAllowOne [a] = Just a
+      onlyAllowOne _ = Nothing
+      countFools :: PlayerState -> Int
+      countFools = sum . (map pointForFool) . playerHarvestPile
+        where pointForFool (Card Fool _) = 1
+              pointForFool _ = 0
+      countLuminaries :: PlayerState -> Int
+      countLuminaries = length . playerLuminaries
+  in  
+      []
+
+
+
+      
+      
+
