@@ -38,7 +38,7 @@ default-extensions:
 - NoImplicitPrelude
 - OverloadedStrings
 - QuasiQuotes
-- TemplateHaskell
+# - TemplateHaskell
 
 library:
   source-dirs: src

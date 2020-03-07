@@ -1,7 +1,7 @@
 module Main where
 
 import ClassyPrelude
-import Lib
+import GameLogic
 
 main :: IO ()
 main = someFunc
