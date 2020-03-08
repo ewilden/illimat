@@ -1,7 +1,7 @@
 module GameLogic where
 
 import Prelude (head)
-import ClassyPrelude hiding (pred, succ)
+import ClassyPrelude hiding (pred, succ, sequence_)
 import qualified ClassyPrelude as Unsafe (pred, succ)
 import Control.Monad.State.Lazy
 import Control.Monad.Trans.Either
@@ -328,16 +328,7 @@ checkNotS :: Bool -> String -> FailableGameAction ()
 checkNotS failCond failureMsg = if failCond then returnLeft failureMsg else return ()
 
 seqDo :: [FailableGameAction a] -> FailableGameAction ()
-seqDo [] = StateT (\s -> Right ((), s))
-seqDo ((StateT f):tl) = StateT g
-  where 
-    g s = case f s of
-            Left err -> Left err
-            Right (a, s') -> recur s'
-    (StateT recur) = seqDo tl
-  -- StateT (\s -> case runStateT s h of 
-  --                               Left str -> Left str
-  --                               Right (_, s') -> runStateT (seqDo tl) s')
+seqDo = sequence_
 
 doNTimes :: Int -> FailableGameAction a -> FailableGameAction ()
 doNTimes n action = seqDo $ map (\_ -> action) $ (replicate n () :: [()])
@@ -585,7 +576,7 @@ resolveLuminaryTake lum playerIndex = case lum of
 
 cardsCanHarvest :: [Card] -> [CardStack] -> Bool
 cardsCanHarvest cardsUsed targetStacks = any (\handSum -> canHarvestWithNum handSum targetStacks) possibleHandSums
-    where possibleHandSums = allPossibleSums [] cardsUsed
+    where possibleHandSums = allPossibleSums [0] cardsUsed
           allPossibleSums acc ((Card cardVal _):tl) = 
               let
                   acc' = (+) <$> (toNumberVals cardVal) <*> acc
