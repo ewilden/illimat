@@ -1,11 +1,10 @@
-module GameLogic
-    ( someFunc
-    ) where
+module GameLogic where
 
 import Prelude (head)
 import ClassyPrelude hiding (pred, succ)
 import qualified ClassyPrelude as Unsafe (pred, succ)
 import Control.Monad.State.Lazy
+import Control.Monad.Trans.Either
 import Data.Sort
 
 succ :: (Bounded a, Eq a, Enum a) => a -> a
@@ -113,7 +112,7 @@ data Direction = N | E | S | W
     deriving (Show, Eq, Enum, Bounded)
 
 fieldSFromDir :: Direction -> GameState -> (FieldState, Season)
-fieldSFromDir dir gs = (fieldGetter N $ (gameBoardState gs), seasonFromDir dir gs)
+fieldSFromDir dir gs = (fieldGetter dir $ (gameBoardState gs), seasonFromDir dir gs)
 
 fieldGetter :: Direction -> BoardState -> FieldState
 fieldGetter N = bsFieldN
@@ -201,23 +200,21 @@ patchListEith failMsg ind f ls = case splitAt ind ls of
 
 type FailableGameAction a = StateT GameState (Either String) a
 
+runGS :: FailableGameAction a -> GameState -> Either String (a, GameState)
+runGS action gs = (runStateT action gs)
+
 toEith :: s -> Maybe a -> Either s a
 toEith _ (Just a) = Right a
 toEith s Nothing = Left s
 
 dealCardToPlayer :: PlayerIndex -> FailableGameAction ()
-dealCardToPlayer playerIndex = StateT $ \gameState ->
-    do
-        topCard <- toEith "No more cards!" $ headMay $ gameDeck gameState
-        restOfDeck <- toEith "No more cards!" $ tailMay $ gameDeck gameState
-        nextPlayers <- toEith "Wrong number of players" $ patchListAt playerIndex (mapHand (topCard :)) $ gamePlayerState gameState
-        return (
-                (),
-                gameState {
-                    gamePlayerState = nextPlayers
-                    , gameDeck = restOfDeck
-                }
-            )
+dealCardToPlayer playerIndex = do
+  currDeck <- withS gameDeck
+  case currDeck of
+    [] -> returnLeft "No more cards!"
+    (h:tl) -> do
+      updateState (\gs -> return $ gs {gameDeck = tl})
+      updateState $ liftPlayerS playerIndex (\ps -> return $ ps {playerHand = h:(playerHand ps)})
 
 dealUntilFieldHasNCards :: Int -> Direction -> FailableGameAction ()
 dealUntilFieldHasNCards n fieldDir = do
@@ -228,8 +225,9 @@ dealUntilFieldHasNCards n fieldDir = do
   if
     (length currDeck) >= cardsToDeal
   then do
-    updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldCards = (fromCard <$> (take cardsToDeal currDeck))})
     updateState $ (\gs -> return $ gs {gameDeck = drop cardsToDeal currDeck})
+    updateState $ mapFieldM fieldDir 
+      (\fs -> return $ fs {fieldCards = (map fromCard $ take cardsToDeal currDeck) ++ fieldCards currField })
   else
     returnLeft "Didn't have enough cards to re-seed the field!"
 
@@ -266,8 +264,8 @@ getPlayerS ind = do
     Nothing -> returnLeft "That player doesn't exist!"
     Just player -> return player
 
-returnLeft :: a -> StateT GameState (Either a) b
-returnLeft a = StateT (\_ -> Left a)
+returnLeft :: String -> FailableGameAction a
+returnLeft s = StateT (\_ -> Left s)
 
 removeCardStackFromField :: CardStack -> Direction -> FailableGameAction ()
 removeCardStackFromField cardStack dir = do
@@ -329,13 +327,20 @@ checkS cond failureMsg = if cond then return () else returnLeft failureMsg
 checkNotS :: Bool -> String -> FailableGameAction ()
 checkNotS failCond failureMsg = if failCond then returnLeft failureMsg else return ()
 
-seqDo :: (Monad m) => [m a] -> m ()
-seqDo actions = do
-  _ <- sequence actions
-  return ()
+seqDo :: [FailableGameAction a] -> FailableGameAction ()
+seqDo [] = StateT (\s -> Right ((), s))
+seqDo ((StateT f):tl) = StateT g
+  where 
+    g s = case f s of
+            Left err -> Left err
+            Right (a, s') -> recur s'
+    (StateT recur) = seqDo tl
+  -- StateT (\s -> case runStateT s h of 
+  --                               Left str -> Left str
+  --                               Right (_, s') -> runStateT (seqDo tl) s')
 
-doNTimes :: (Monad m) => Int -> m a -> m ()
-doNTimes n action = seqDo $ map (\_ -> action) $ replicate n ()
+doNTimes :: Int -> FailableGameAction a -> FailableGameAction ()
+doNTimes n action = seqDo $ map (\_ -> action) $ (replicate n () :: [()])
 
 playerHasCards :: PlayerIndex -> [Card] -> GameState -> Bool
 playerHasCards playerInd cards gs =
@@ -387,10 +392,10 @@ resolveSeasonChange (Card val cseason) dir = do
 
 doInitialGameSetup :: FailableGameAction ()
 doInitialGameSetup = do
-  currGS <- get
   seqDo (map dealLuminaryToField (allEnum :: [Direction]))
   seqDo (map deal3CardsToField (allEnum :: [Direction]))
-  seqDo (map (\(_, i) -> fillPlayersHandTo4 i) $ zip (gamePlayerState currGS) [0..])
+  currPlayers <- withS (gamePlayerState)
+  seqDo (map (\(_, i) -> fillPlayersHandTo4 i) $ zip currPlayers [0..])
 
 fillPlayersHandTo4 :: PlayerIndex -> FailableGameAction ()
 fillPlayersHandTo4 playerIndex = do
