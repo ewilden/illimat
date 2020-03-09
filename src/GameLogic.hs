@@ -4,9 +4,9 @@ import Prelude (head)
 import ClassyPrelude hiding (pred, succ, sequence_)
 import qualified ClassyPrelude as Unsafe (pred, succ)
 import Control.Monad.State.Lazy
-import Control.Monad.Trans.Either
 import Data.Sort
 
+-- loops around back to minBound
 succ :: (Bounded a, Eq a, Enum a) => a -> a
 succ a = if a == maxBound then minBound else Unsafe.succ a
 
@@ -214,7 +214,7 @@ dealCardToPlayer playerIndex = do
     [] -> returnLeft "No more cards!"
     (h:tl) -> do
       updateState (\gs -> return $ gs {gameDeck = tl})
-      updateState $ liftPlayerS playerIndex (\ps -> return $ ps {playerHand = h:(playerHand ps)})
+      updateState $ mapPlayerM playerIndex (\ps -> return $ ps {playerHand = h:(playerHand ps)})
 
 dealUntilFieldHasNCards :: Int -> Direction -> FailableGameAction ()
 dealUntilFieldHasNCards n fieldDir = do
@@ -313,8 +313,8 @@ updateState f = do
     Left errMsg -> returnLeft errMsg
     Right gs -> put gs
 
-liftPlayerS :: PlayerIndex -> (PlayerState -> Either String PlayerState) -> (GameState -> Either String GameState)
-liftPlayerS playerInd f gs =
+mapPlayerM :: PlayerIndex -> (PlayerState -> Either String PlayerState) -> (GameState -> Either String GameState)
+mapPlayerM playerInd f gs =
   let
     prevPlayers = gamePlayerState gs
     patchResult = patchListEith "no such player" playerInd f prevPlayers
@@ -342,7 +342,7 @@ playerHasCards playerInd cards gs =
 addCardStacksToHarvestPile :: PlayerIndex -> [CardStack] -> FailableGameAction ()
 addCardStacksToHarvestPile playerIndex stacks = do
   let cardsInStacks = (\(CardStack _ cards) -> cards) =<< stacks
-  updateState $ liftPlayerS playerIndex
+  updateState $ mapPlayerM playerIndex
     (\prevPlayer -> return $ 
       prevPlayer {playerHarvestPile = (cardsInStacks ++ playerHarvestPile prevPlayer)})
 
@@ -350,7 +350,7 @@ removeCardsFromPlayersHand :: PlayerIndex -> [Card] -> FailableGameAction ()
 removeCardsFromPlayersHand playerIndex cards = do
   playerHasCards' <- withS $ playerHasCards playerIndex cards
   checkS playerHasCards' "Player doesn't have those cards" -- TODO is this necessary?
-  updateState $ liftPlayerS playerIndex
+  updateState $ mapPlayerM playerIndex
     (\prevPlayer -> return $
       prevPlayer {playerHand = (playerHand prevPlayer) `setSubtract` cards})
 
@@ -361,7 +361,7 @@ givePlayerOkus playerIndex = do
     prevNumOkuses > 0
   then do
     gs <- get
-    updateState $ liftPlayerS playerIndex (\ps -> return ps { playerNumOkuses = 1 + playerNumOkuses ps})
+    updateState $ mapPlayerM playerIndex (\ps -> return ps { playerNumOkuses = 1 + playerNumOkuses ps})
     updateState $ return . mapIllimat (\is -> is { illNumOkuses = (illNumOkuses is) - 1})
   else
     returnLeft "No more okuses!"
@@ -434,9 +434,11 @@ harvest playerIndex playedCards fieldDir targetStacks = do
   currSeason <- withS $ seasonFromDir fieldDir
   currGS <- get
   let maidenIsActive = (FaceUp Maiden) `elem` luminaries
-          where luminaries = map fieldLuminary fields
-                fields = map (\dir -> fieldFromDir dir currGS) (allEnum :: [Direction])
+      unionIsInField = (FaceUp Union) == (fieldLuminary $ fieldFromDir fieldDir currGS)
+      luminaries = map fieldLuminary fields
+      fields = map (\dir -> fieldFromDir dir currGS) (allEnum :: [Direction])
       playerHasPlayedCards = playerHasCards playerIndex playedCards currGS
+  checkS (length playedCards `elem` [1, 4] || unionIsInField && length playedCards == 2) "Harvested with the wrong number of cards!"
   checkNotS (currSeason == Winter && (not maidenIsActive)) "Can't harvest because it's winter!"
   checkS stacksAreInField "Can't harvest because target stacks aren't in the field!"
   checkS playerHasPlayedCards "Can't harvest because player doesn't have the cards they're using!"
@@ -481,7 +483,7 @@ harvest playerIndex playedCards fieldDir targetStacks = do
         return True
       FaceUp lum -> do
         updateState $ mapFieldM fieldDir (\fs -> return $ fs {fieldLuminary = NoLuminary})
-        updateState $ liftPlayerS playerIndex (\ps -> return $ ps { playerLuminaries = lum : (playerLuminaries ps)})
+        updateState $ mapPlayerM playerIndex (\ps -> return $ ps { playerLuminaries = lum : (playerLuminaries ps)})
         resolveLuminaryTake lum playerIndex
         return False
       NoLuminary -> return False
@@ -554,8 +556,8 @@ resolveLuminaryTake lum playerIndex = case lum of
   Rake -> do
     let 
       giveCardFromAToB card aInd bInd = do
-        updateState $ liftPlayerS aInd (\ps -> return $ ps {playerHarvestPile = (playerHarvestPile ps) `setDelete` card})
-        updateState $ liftPlayerS bInd (\ps -> return $ ps {playerHarvestPile = card : (playerHarvestPile ps)})
+        updateState $ mapPlayerM aInd (\ps -> return $ ps {playerHarvestPile = (playerHarvestPile ps) `setDelete` card})
+        updateState $ mapPlayerM bInd (\ps -> return $ ps {playerHarvestPile = card : (playerHarvestPile ps)})
       filterForNonFoolSummer = filter $ \(Card val season) -> season == CSummer && val /= Fool
       filterForSummer = filter $ \(Card _ season) -> season == CSummer
       grabSummerCardFrom ind = do
@@ -570,7 +572,7 @@ resolveLuminaryTake lum playerIndex = case lum of
   Children -> do
     currChildrenCards <- withS gameChildrenCards
     updateState (\gs -> return $ gs {gameChildrenCards = []})
-    updateState $ liftPlayerS playerIndex (\ps -> return $ ps {playerHarvestPile = currChildrenCards ++ (playerHarvestPile ps)})
+    updateState $ mapPlayerM playerIndex (\ps -> return $ ps {playerHarvestPile = currChildrenCards ++ (playerHarvestPile ps)})
   _ -> return ()
 
 
@@ -586,9 +588,9 @@ cardsCanHarvest cardsUsed targetStacks = any (\handSum -> canHarvestWithNum hand
 
 canHarvestWithNum :: Int -> [CardStack] -> Bool
 canHarvestWithNum num stacks = duplicateStacksMatchNum && additionsWork
-    where duplicateStacksMatchNum = all (\(CardStack val cards) -> (length cards == 1) || num `elem` val) stacks
+    where duplicateStacksMatchNum = all (\(CardStack vals cards) -> (length cards == 1) || num `elem` vals) stacks
           additionsWork = any (\interp -> canFormPartition num interp) stackInterpretations
-          stackInterpretations = foldr (\numVals accls -> (:) <$> numVals <*> accls) [[]] (map (\(CardStack val _) -> val) stacks)
+          stackInterpretations = foldr (\numVals accls -> (:) <$> numVals <*> accls) [[]] (map (\(CardStack vals _) -> vals) stacks)
 
 allSubsets :: [a] -> [[a]]
 allSubsets [] = [[]]
