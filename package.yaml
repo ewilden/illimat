@@ -34,13 +34,15 @@ dependencies:
 - lens
 - sort
 - random
+- elm-bridge
+- text-conversions
 # - transformers-either 
 
 default-extensions:
 - NoImplicitPrelude
 - OverloadedStrings
 - QuasiQuotes
-# - TemplateHaskell
+- TemplateHaskell
 
 library:
   source-dirs: src

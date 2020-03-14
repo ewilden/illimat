@@ -5,6 +5,13 @@ import GameLogic
 import qualified Prelude as Prelude ((!!))
 import qualified System.Random as System.Random
 import Control.Monad.State.Lazy
+import Data.Text.Conversions
+
+import Elm.Derive
+import Elm.Module
+
+import Data.Proxy
+
 
 -- from https://www.programming-idioms.org/idiom/10/shuffle-a-list/826/haskell
 shuffle :: [a] -> IO [a]
@@ -28,5 +35,40 @@ blindlyDo gs action = case runStateT action gs of
   Left s -> error s
   Right (_, news) -> return news
 
+-- main :: IO ()
+-- main = someFunc
+data Foo
+   = Foo
+   { f_name :: String
+   , f_blablub :: Int
+   } deriving (Show, Eq)
+
+deriveBoth defaultOptions ''GameState
+deriveBoth defaultOptions ''IllimatState
+deriveBoth defaultOptions ''Direction
+deriveBoth defaultOptions ''LuminaryState
+deriveBoth defaultOptions ''BoardState
+deriveBoth defaultOptions ''FieldState
+deriveBoth defaultOptions ''CardStack
+deriveBoth defaultOptions ''Card
+deriveBoth defaultOptions ''CardVal
+deriveBoth defaultOptions ''CardSeason
+deriveBoth defaultOptions ''PlayerState
+deriveBoth defaultOptions ''Luminary
+
 main :: IO ()
-main = someFunc
+main =
+    putStrLn $ toText $ makeElmModule "GameStateDecoder"
+    [ DefineElm (Proxy :: Proxy GameState)        
+    , DefineElm (Proxy :: Proxy IllimatState)
+    , DefineElm (Proxy :: Proxy Direction)
+    , DefineElm (Proxy :: Proxy LuminaryState)
+    , DefineElm (Proxy :: Proxy BoardState)
+    , DefineElm (Proxy :: Proxy FieldState)
+    , DefineElm (Proxy :: Proxy CardStack)
+    , DefineElm (Proxy :: Proxy Card)
+    , DefineElm (Proxy :: Proxy CardVal)
+    , DefineElm (Proxy :: Proxy CardSeason)
+    , DefineElm (Proxy :: Proxy PlayerState)
+    , DefineElm (Proxy :: Proxy Luminary)
+    ]
