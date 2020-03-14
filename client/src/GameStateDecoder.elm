@@ -12,7 +12,7 @@ type alias GameState  =
    { gameIllimatState: IllimatState
    , gameBoardState: BoardState
    , gamePlayerState: (List PlayerState)
-   , gameDeck: Deck
+   , gameDeck: (List Card)
    , gameUnusedLuminaries: (List Luminary)
    , gameChildrenCards: (List Card)
    }
@@ -23,7 +23,7 @@ jsonDecGameState =
    |> required "gameIllimatState" (jsonDecIllimatState)
    |> required "gameBoardState" (jsonDecBoardState)
    |> required "gamePlayerState" (Json.Decode.list (jsonDecPlayerState))
-   |> required "gameDeck" (jsonDecDeck)
+   |> required "gameDeck" (Json.Decode.list (jsonDecCard))
    |> required "gameUnusedLuminaries" (Json.Decode.list (jsonDecLuminary))
    |> required "gameChildrenCards" (Json.Decode.list (jsonDecCard))
 
@@ -33,7 +33,7 @@ jsonEncGameState  val =
    [ ("gameIllimatState", jsonEncIllimatState val.gameIllimatState)
    , ("gameBoardState", jsonEncBoardState val.gameBoardState)
    , ("gamePlayerState", (Json.Encode.list jsonEncPlayerState) val.gamePlayerState)
-   , ("gameDeck", jsonEncDeck val.gameDeck)
+   , ("gameDeck", (Json.Encode.list jsonEncCard) val.gameDeck)
    , ("gameUnusedLuminaries", (Json.Encode.list jsonEncLuminary) val.gameUnusedLuminaries)
    , ("gameChildrenCards", (Json.Encode.list jsonEncCard) val.gameChildrenCards)
    ]

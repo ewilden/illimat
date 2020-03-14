@@ -35,7 +35,7 @@ data GameState = GameState
     { gameIllimatState :: IllimatState
     , gameBoardState :: BoardState
     , gamePlayerState :: [PlayerState]
-    , gameDeck :: Deck
+    , gameDeck :: [Card]
     , gameUnusedLuminaries :: [Luminary]
     , gameChildrenCards :: [Card]
     } deriving (Show)
@@ -148,24 +148,21 @@ enumStartingFrom startVal =
 enumWheel :: (Enum a, Bounded a, Eq a) => a -> [a]
 enumWheel a = a : (enumWheel $ succ a)
 
-type Deck = [Card]
-type LuminaryDeck = [Luminary]
-
 allEnum :: (Enum a, Bounded a, Eq a) => [a]
 allEnum = enumStartingFrom minBound
 
-allCards :: Deck
+allCards :: [Card]
 allCards = Card <$> (allEnum :: [CardVal]) <*> (allEnum :: [CardSeason])
 
-allCardsMinusStars :: Deck
+allCardsMinusStars :: [Card]
 allCardsMinusStars = filter notStar allCards
     where notStar (Card _ CStars) = False
           notStar _ = True
 
-allLuminaries :: LuminaryDeck
+allLuminaries :: [Luminary]
 allLuminaries = allEnum
 
-emptyGameState :: Int -> Direction -> Deck -> LuminaryDeck -> GameState
+emptyGameState :: Int -> Direction -> [Card] -> [Luminary] -> GameState
 emptyGameState numPlayers initSummerDir startingDeck startingLuminaryDeck =
     GameState
     { gameIllimatState = IllimatState initSummerDir numPlayers

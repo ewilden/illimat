@@ -4,6 +4,10 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+
+import GameStateDecoder exposing (..)
+
+import Json.Encode exposing (encode)
 -- MAIN
 main =
   Browser.sandbox { init = init, update = update, view = view }
@@ -45,6 +49,7 @@ view model =
     , viewInput "password" "Password" model.password Password
     , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
     , viewValidation model
+    , text (encode 2 (jsonEncCard (Card Fool CSummer)))
     ]
 
 viewInput : String -> String -> String -> (String -> msg) -> Html msg
