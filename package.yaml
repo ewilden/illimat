@@ -36,6 +36,10 @@ dependencies:
 - random
 - elm-bridge
 - text-conversions
+- aeson
+- scotty
+- bytestring
+- wai-cors
 # - transformers-either 
 
 default-extensions:
@@ -51,6 +55,15 @@ executables:
   illimat-exe:
     main:                Main.hs
     source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - illimat
+  schemagen:
+    main:               SchemaGen.hs
+    source-dirs:        schemagen
     ghc-options:
     - -threaded
     - -rtsopts

@@ -145,9 +145,6 @@ enumStartingFrom startVal =
     then [startVal] 
     else startVal : enumStartingFrom (succ startVal)
 
-enumWheel :: (Enum a, Bounded a, Eq a) => a -> [a]
-enumWheel a = a : (enumWheel $ succ a)
-
 allEnum :: (Enum a, Bounded a, Eq a) => [a]
 allEnum = enumStartingFrom minBound
 
