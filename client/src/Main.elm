@@ -15,11 +15,6 @@ import Json.Encode exposing (encode)
 
 import GameStateDecoder exposing (..)
 
-
-
--- MAIN
-
-
 main =
   Browser.element
     { init = init
@@ -28,30 +23,18 @@ main =
     , view = view
     }
 
-
-
--- MODEL
-
-
 type Model
   = Failure
   | Loading
   | Success GameState
 
-
 init : () -> (Model, Cmd Msg)
 init _ =
   (Loading, getInitialGameState)
 
-
-
--- UPDATE
-
-
 type Msg
   = MorePlease
   | GotGameState (Result Http.Error GameState)
-
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -67,57 +50,109 @@ update msg model =
         Err _ ->
           (Failure, Cmd.none)
 
-
-
--- SUBSCRIPTIONS
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.none
-
-
-
--- VIEW
-
 
 view : Model -> Html Msg
 view model =
   div []
     [ 
-      viewGS model
+      case model of 
+        Success gameState -> viewGameState gameState
+        Failure -> text "Failure"
+        Loading -> text "Not loaded yet"
     ]
 
-viewGS : Model -> Html Msg
-viewGS model =
-  case model of
-    Success gs ->
-      text (encode 4 (jsonEncGameState gs))
-    Failure -> text "Failure"
-    Loading -> text "Not loaded yet"
+viewGameState : GameState -> Html Msg
+viewGameState gameState =
+  div [ style "margin" "0 16px 0"]
+    [
+      p [] [text "BoardState:"]
+    , viewBoardState gameState.gameBoardState
+    , p [] [text "Everything:"]
+    , text (encode 4 (jsonEncGameState gameState))
+    ]
+  
+viewBoardState : BoardState -> Html Msg
+viewBoardState boardState = 
+  div [ style "margin" "0 16px 0" ]
+    [ div [] 
+        [ div []
+            [ p [] [text "North:"]
+            , viewFieldState boardState.bsFieldN
+            ]
+        , div [] 
+            [ p [] [text "South:"]
+            , viewFieldState boardState.bsFieldS
+            ]
+        , div [] 
+            [ p [] [text "West:"]
+            , viewFieldState boardState.bsFieldW
+            ]
+        , div [] 
+            [ p [] [text "East:"]
+            , viewFieldState boardState.bsFieldE
+            ]
+        ]
+    ]
 
--- viewGif : Model -> Html Msg
--- viewGif model =
---   case model of
---     Failure ->
---       div []
---         [ text "I could not load a random cat for some reason. "
---         , button [ onClick MorePlease ] [ text "Try Again!" ]
---         ]
+viewFieldState : FieldState -> Html Msg
+viewFieldState fieldState =
+  div [ style "margin" "0 16px 0" ]
+    [
+      p [] [text "Cards:"]
+    , div [] (List.map viewCardStack fieldState.fieldCards)
+    , p [] [text "Luminary:"]
+    , text (encode 4 (jsonEncLuminaryState fieldState.fieldLuminary))
+    ]
 
---     Loading ->
---       text "Loading..."
+viewCardStack : CardStack -> Html Msg
+viewCardStack (CardStack vals cards) =
+  div [style "display" "inline-block"] 
+  [
+    case cards of
+      [card] -> viewCard card
+      _ -> text (encode 4 (jsonEncCardStack (CardStack vals cards)))
+  ]
 
---     Success url ->
---       div []
---         [ button [ onClick MorePlease, style "display" "block" ] [ text "More Please!" ]
---         , img [ src url ] []
---         ]
+viewCard : Card -> Html Msg
+viewCard (Card val season) = 
+  div [ style "padding" "4px"
+      , style "margin" "8px"
+      , style "border" "1px solid black"
+      , style "text-align" "center"
+      , style "border-radius" "4px"] [
+    div [] [text (cardValToString val)]
+  , div [] [text " of "]
+  , div [] [text (cardSeasonToString season)]
+  ]
 
+cardValToString : CardVal -> String
+cardValToString val = 
+  case val of 
+    Fool -> "Fool"
+    Two -> "Two"
+    Three -> "Three"
+    Four -> "Four"
+    Five -> "Five"
+    Six -> "Six"
+    Seven -> "Seven"
+    Eight -> "Eight"
+    Nine -> "Nine"
+    Ten -> "Ten"
+    Knight -> "Knight"
+    Queen -> "Queen"
+    King -> "King"
 
-
--- HTTP
-
+cardSeasonToString : CardSeason -> String
+cardSeasonToString cardSeason =
+  case cardSeason of
+    CSummer -> "Summer"
+    CSpring -> "Spring"
+    CWinter -> "Winter"
+    CAutumn -> "Autumn"
+    CStars -> "Stars"
 
 getInitialGameState : Cmd Msg
 getInitialGameState =
@@ -125,8 +160,3 @@ getInitialGameState =
     { url = "http://localhost:3000/start"
     , expect = Http.expectJson GotGameState jsonDecGameState
     }
-
-
--- gifDecoder : Decoder String
--- gifDecoder =
---   field "data" (field "image_url" string)
