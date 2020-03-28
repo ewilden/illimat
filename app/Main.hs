@@ -4,6 +4,7 @@ import ClassyPrelude hiding (delete)
 import GameLogic
 import ElmConnect
 import qualified Prelude as Prelude ((!!))
+import Prelude (flip)
 import qualified System.Random as System.Random
 import qualified Control.Monad.State.Lazy as LazyS
 import Data.Aeson hiding (json)
