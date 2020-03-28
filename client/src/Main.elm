@@ -23,21 +23,53 @@ main =
     , view = view
     }
 
-type Model
+
+type alias Model =
+  { gameStateModel: GameStateModel
+  , selectedCardsModel: SelectedCardsModel
+  }
+
+type GameStateModel
   = Failure
   | Loading
   | Success GameState
 
+type alias SelectedCardsModel = 
+  { selectedCards: List Card
+  }
+
 init : () -> (Model, Cmd Msg)
 init _ =
-  (Loading, getInitialGameState)
+  let
+    (gsModel, gsCmd) = initGameStateModel ()
+    (scModel, scCmd) = initSelectedCardsModel ()
+  in
+    (Model gsModel scModel, Cmd.batch [gsCmd, scCmd])
+
+initGameStateModel : () -> (GameStateModel, Cmd Msg)
+initGameStateModel _ = (Loading, getInitialGameState)
+
+initSelectedCardsModel : () -> (SelectedCardsModel, Cmd Msg)
+initSelectedCardsModel _ = ({selectedCards = []}, Cmd.none)
+
 
 type Msg
   = MorePlease
   | GotGameState (Result Http.Error GameState)
+  | SelectCard Card
+  | UnselectCard Card
+
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
+  let
+    (gsModel, gsCmd) = updateGameStateModel msg model.gameStateModel
+    (selectedCardsModel, scCmd) = updateSelectedCardsModel msg model.selectedCardsModel
+  in
+    ({gameStateModel = gsModel, selectedCardsModel = selectedCardsModel}, (Cmd.batch [gsCmd, scCmd]))
+
+updateGameStateModel : Msg -> GameStateModel -> (GameStateModel, Cmd Msg)
+updateGameStateModel msg model =
   case msg of
     MorePlease ->
       (Loading, getInitialGameState)
@@ -50,16 +82,25 @@ update msg model =
         Err _ ->
           (Failure, Cmd.none)
 
+    _ -> (model, Cmd.none)
+
+updateSelectedCardsModel : Msg -> SelectedCardsModel -> (SelectedCardsModel, Cmd Msg)
+updateSelectedCardsModel msg model = 
+  case msg of
+    SelectCard card -> ({model | selectedCards = card :: model.selectedCards}, Cmd.none)
+    UnselectCard card -> ({model | selectedCards = List.filter (\c -> c /= card) model.selectedCards}, Cmd.none)
+    _ -> (model, Cmd.none)
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.none
 
 view : Model -> Html Msg
-view model =
+view {gameStateModel, selectedCardsModel} =
   div []
     [ 
-      case model of 
-        Success gameState -> viewGameState gameState
+      case gameStateModel of 
+        Success gameState -> viewGameState { gameState = gameState, selectedCardsModel = selectedCardsModel }
         Failure -> text "Failure"
         Loading -> text "Not loaded yet"
     ]
@@ -70,18 +111,30 @@ nth i ls =
     [] -> Nothing
     h::_ -> Just h
 
-viewPlayerFromIndex : { a | gamePlayerState: List PlayerState} -> Int -> Html Msg
-viewPlayerFromIndex gameState playerIndex =
+viewPlayerFromIndex : SelectedCardsModel -> { a | gamePlayerState: List PlayerState} -> Int -> Html Msg
+viewPlayerFromIndex selectedCardsModel gameState playerIndex =
   nth playerIndex gameState.gamePlayerState
-  |> Maybe.map (\playerState -> text (encode 4 (jsonEncPlayerState playerState))) 
+  |> Maybe.map (viewPlayerState selectedCardsModel)
   |> Maybe.withDefault (text "None")
 
-viewGameState : GameState -> Html Msg
-viewGameState gameState =
+viewPlayerState : SelectedCardsModel -> PlayerState -> Html Msg
+viewPlayerState {selectedCards} playerState =
+  div []
+    [ p [] [text "Hand:"]
+    , div 
+        [ style "display" "flex"
+        , style "flex-direction" "row"
+        ]
+        (List.map (\c -> viewCard (List.member c selectedCards) c) playerState.playerHand)
+    ]
+
+viewGameState : { a | gameState: GameState
+                    , selectedCardsModel: SelectedCardsModel } -> Html Msg
+viewGameState { gameState, selectedCardsModel } =
   div [ style "margin" "0 16px 0"]
     [
       p [] [text "Game board:"]
-    , viewBoard gameState
+    , viewBoard gameState selectedCardsModel
     , p [] [text "Everything:"]
     , text (encode 4 (jsonEncGameState gameState))
     ]
@@ -100,7 +153,8 @@ styleGrid numColumns =
   ]
 
 styleCell : List (Attribute Msg)
-styleCell = [ style "place-self" "center"
+styleCell = [ style "place-self" "center stretch"
+            , style "flex" "1 1 100%"
             ]
 
 styleCellAt : Int -> Int -> List (Attribute Msg)
@@ -130,12 +184,12 @@ styleMid = styleCellAt 2 2
 viewBoard : { a 
             | gamePlayerState: List PlayerState
             , gameBoardState: BoardState
-            , gameIllimatState: IllimatState } -> Html Msg
-viewBoard { gamePlayerState, gameBoardState, gameIllimatState } = 
+            , gameIllimatState: IllimatState } -> SelectedCardsModel -> Html Msg
+viewBoard { gamePlayerState, gameBoardState, gameIllimatState } selectedCardsModel = 
   let
     showPlayer i =
       [ p [] [text ("Player " ++ String.fromInt i ++ ":")]
-      , viewPlayerFromIndex { gamePlayerState = gamePlayerState } (i - 1)
+      , viewPlayerFromIndex selectedCardsModel { gamePlayerState = gamePlayerState } (i - 1)
       ]
   in
     div [ style "margin" "0 16px 0" ]
@@ -190,7 +244,8 @@ viewIllimatState illimatState =
   in
     div [ style "flex" "1 1 100%"
         , style "border" "1px solid black"]
-      [ div (styleGrid 3 ++ [style "height" "100%"])
+      [ div (styleGrid 3 ++ [ style "height" "100%"
+                            , style "text-align" "center"])
           [ div styleN
               [ dirToSeason summerDir N |> seasonToString |> text ]
           , div styleE
@@ -245,34 +300,60 @@ rotateClockwise numRotates rotator a =
 
 viewFieldState : FieldState -> Html Msg
 viewFieldState fieldState =
-  div [ style "margin" "0 16px 0" ]
+  div [ style "margin" "0 16px 0" 
+      , style "flex" "1 1 100%"]
     [
       p [] [text "Cards:"]
-    , div [] (List.map viewCardStack fieldState.fieldCards)
+    , div 
+        [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-between"] 
+        (List.map viewCardStack fieldState.fieldCards)
     , p [] [text "Luminary:"]
     , text <| luminaryStateToString fieldState.fieldLuminary
     ]
 
 viewCardStack : CardStack -> Html Msg
 viewCardStack (CardStack vals cards) =
-  div [style "display" "inline-block"] 
+  div [] 
   [
     case cards of
-      [card] -> viewCard card
-      _ -> text (encode 4 (jsonEncCardStack (CardStack vals cards)))
+      [card] -> viewCard False card
+      _ -> viewMultiCardStack (CardStack vals cards)
   ]
 
-viewCard : Card -> Html Msg
-viewCard (Card val season) = 
-  div [ style "padding" "4px"
-      , style "margin" "8px"
+viewMultiCardStack : CardStack -> Html Msg
+viewMultiCardStack (CardStack vals cards) =
+  div
+    [ style "padding" "2px"
+    , style "border" "1px solid #888"
+    , style "text-align" "center"
+    , style "border-radius" "2px"]
+    [ p [] [ text <| "Stack with possible values [" ++ (String.join "," <| List.map String.fromInt vals) ++ "]" ]
+    , div
+        [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-around"
+        ]
+        (List.map (viewCard False) cards)
+    ]
+
+viewCard : Bool -> Card -> Html Msg
+viewCard isSelected (Card val season) = 
+  div 
+    ([ style "padding" "4px"
       , style "border" "1px solid black"
       , style "text-align" "center"
-      , style "border-radius" "4px"] [
-    div [] [text (cardValToString val)]
-  , div [] [text " of "]
-  , div [] [text (cardSeasonToString season)]
-  ]
+      , style "border-radius" "4px"
+      , (if isSelected then (style "border-color" "red") else (style "border-color" "black"))
+      , onClick (if isSelected then 
+            (UnselectCard (Card val season))
+          else (SelectCard (Card val season))) ])
+    [
+      div [] [text (cardValToString val)]
+    , div [] [text " of "]
+    , div [] [text (cardSeasonToString season)]
+    ]
 
 cardValToString : CardVal -> String
 cardValToString val = deQuote (encode 4 (jsonEncCardVal val))
