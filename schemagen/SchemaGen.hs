@@ -1,19 +1,19 @@
 module SchemaGen where
 
-import ClassyPrelude
-import GameLogic
-import Data.Text.Conversions
+import           ClassyPrelude
+import           GameLogic
+import           Data.Text.Conversions
 
-import Elm.Derive
-import Elm.Module
+import           Elm.Derive
+import           Elm.Module
 
-import Data.Proxy
-import ElmConnect
+import           Data.Proxy
+-- import ElmConnect
 
 main :: IO ()
-main =
-    putStrLn $ toText $ makeElmModule "GameStateDecoder"
-    [ DefineElm (Proxy :: Proxy GameState)        
+main = putStrLn $ toText $ makeElmModule
+    "GameStateDecoder"
+    [ DefineElm (Proxy :: Proxy GameState)
     , DefineElm (Proxy :: Proxy IllimatState)
     , DefineElm (Proxy :: Proxy Direction)
     , DefineElm (Proxy :: Proxy LuminaryState)
