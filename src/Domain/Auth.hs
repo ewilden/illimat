@@ -12,6 +12,8 @@ module Domain.Auth
   , SessionId
   , RegistrationError(..)
   , LoginError(..)
+  , UsernameVerificationError(..)
+  , VerificationCode
   ,
 
   -- * Ports
@@ -42,7 +44,7 @@ data UsernameVerificationError
   = UsernameVerificationErrorInvalidCode
   deriving (Show, Eq)
 
-newtype Username = Username { usernameRaw :: Text } deriving (Show, Eq)
+newtype Username = Username { usernameRaw :: Text } deriving (Show, Eq, Ord)
 
 rawUsername :: Username -> Text
 rawUsername = usernameRaw

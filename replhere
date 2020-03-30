@@ -1,2 +1,3 @@
 #!/bin/bash
 stack ghci illimat:exe:illimat-exe
+# stack ghci illimat:exe:illimat-exe

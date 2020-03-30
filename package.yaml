@@ -40,6 +40,8 @@ dependencies:
 - scotty
 - bytestring
 - wai-cors
+- data-has
+- lens-tutorial
 # - transformers-either 
 
 default-extensions:
@@ -47,6 +49,8 @@ default-extensions:
 - OverloadedStrings
 - QuasiQuotes
 - TemplateHaskell
+- ConstraintKinds
+- FlexibleContexts
 
 library:
   source-dirs: src
