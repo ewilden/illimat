@@ -159,9 +159,7 @@ fieldFromDir :: Direction -> GameState -> FieldState
 fieldFromDir dir = fst . (fieldSFromDir dir)
 
 getFieldS :: Direction -> FailableGameAction FieldState
-getFieldS dir = do
-  currGS <- get
-  return $ fieldFromDir dir currGS
+getFieldS dir = fieldFromDir dir <$> get
 
 seasonFromDir :: Direction -> GameState -> Season
 seasonFromDir dir gs | dir == (_illSummerDir $ _gameIllimatState gs) = Summer
@@ -327,12 +325,10 @@ fromCard :: Card -> CardStack
 fromCard card@(Card val season) = CardStack (toNumberVals val) [card]
 
 removeCardFromField :: Card -> Direction -> FailableGameAction ()
-removeCardFromField card dir = removeCardStackFromField (fromCard card) dir
+removeCardFromField = removeCardStackFromField . fromCard
 
 withS :: (GameState -> a) -> FailableGameAction a
-withS f = do
-  s <- get
-  return $ f s
+withS f = f <$> get
 
 updateStatePure :: (GameState -> GameState) -> FailableGameAction ()
 updateStatePure f = updateState (return . f)
@@ -408,13 +404,13 @@ givePlayerOkus playerIndex = do
 
 
 resolveSeasonChange :: Card -> Direction -> FailableGameAction ()
-resolveSeasonChange (Card val cseason) dir = do
+resolveSeasonChange (Card val cseason) dir =
   if val `elem` [Fool, Knight, Queen, King]
     then case cseason of
-      CSummer -> (doAllowingFailure $ setSeason Summer dir) >> return ()
-      CAutumn -> (doAllowingFailure $ setSeason Autumn dir) >> return ()
-      CWinter -> (doAllowingFailure $ setSeason Winter dir) >> return ()
-      CSpring -> (doAllowingFailure $ setSeason Spring dir) >> return ()
+      CSummer -> doAllowingFailure (setSeason Summer dir) >> return ()
+      CAutumn -> doAllowingFailure (setSeason Autumn dir) >> return ()
+      CWinter -> doAllowingFailure (setSeason Winter dir) >> return ()
+      CSpring -> doAllowingFailure (setSeason Spring dir) >> return ()
       CStars  -> return ()
     else return ()
 
@@ -422,7 +418,7 @@ doInitialGameSetup :: FailableGameAction ()
 doInitialGameSetup = do
   seqDo (map dealLuminaryToField (allEnum :: [Direction]))
   seqDo (map deal3CardsToField (allEnum :: [Direction]))
-  currPlayers <- withS (_gamePlayerState)
+  currPlayers <- withS _gamePlayerState
   seqDo (map (\(_, i) -> fillPlayersHandTo4 i) $ zip currPlayers [0 ..])
 
 fillPlayersHandTo4 :: PlayerIndex -> FailableGameAction ()

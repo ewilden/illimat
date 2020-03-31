@@ -66,7 +66,7 @@ executables:
     dependencies:
     - illimat
   schemagen:
-    main:               SchemaGen.hs
+    main:               Main.hs
     source-dirs:        schemagen
     ghc-options:
     - -threaded
@@ -75,13 +75,13 @@ executables:
     dependencies:
     - illimat
 
-tests:
-  illimat-test:
-    main:                Spec.hs
-    source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - illimat
+# tests:
+#   illimat-test:
+#     main:                Spec.hs
+#     source-dirs:         test
+#     ghc-options:
+#     - -threaded
+#     - -rtsopts
+#     - -with-rtsopts=-N
+#     dependencies:
+#     - illimat
