@@ -34,13 +34,15 @@ someFunc = do
 
 action :: App ()
 action = do
-  let username = either undefined id $ mkUsername "ecky@test.com"
-      passw = either undefined id $ mkPassword "1234ABCDefgh"
+  let username = either (error "impossible") id $ mkUsername "usern"
+      passw = either (error "impossible") id $ mkPassword "1234ABCDefgh"
       auth = Auth username passw
-  register auth
+  _ <- register auth
   Just vCode <- M.getNotificationsForUsername username
-  verifyUsername vCode
+  _ <- verifyUsername vCode
   Right session <- login auth
   Just uId <- resolveSessionId session
   Just registeredUsername <- getUser uId
   print (session, uId, registeredUsername)
+
+-- left off file page 83
