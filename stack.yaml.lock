@@ -11,6 +11,13 @@ packages:
       sha256: c04add7d791a173f23f32b25f6fe14151f23e2f8651c0e1a0bcfc6293df9a80c
   original:
     hackage: lens-tutorial-1.0.4@sha256:325b59b7658f035d11386589c57d603ee27573f191ed8380dc2a890102bfe143,1199
+- completed:
+    hackage: string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
+    pantry-tree:
+      size: 489
+      sha256: 21c7e61fceea98d14b453fc74c947b715ce33fe4c665c65b1f28c6f417d4ab7e
+  original:
+    hackage: string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
 snapshots:
 - completed:
     size: 523541

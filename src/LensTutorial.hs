@@ -3,7 +3,7 @@ module LensTutorial where
 import           Prelude
 -- import           Control.Lens.Tutorial
 import           Control.Lens            hiding ( element )
-import           Control.Lens.TH
+-- import           Control.Lens.TH
 
 data Atom = Atom { _element :: String, _point :: Point } deriving (Show)
 

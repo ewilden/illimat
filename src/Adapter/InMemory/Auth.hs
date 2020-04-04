@@ -1,7 +1,9 @@
 module Adapter.InMemory.Auth where
 
 import           ClassyPrelude
+import           Control.Monad.Except
 import           Data.Has
+import           Text.StringRandom
 
 import qualified Domain.Auth                   as D
 
@@ -27,26 +29,100 @@ type InMemory r m = (Has (TVar State) r, MonadReader r m, MonadIO m)
 
 addAuth
   :: InMemory r m => D.Auth -> m (Either D.RegistrationError D.VerificationCode)
-addAuth = undefined
+addAuth auth = do
+  tvar <- asks getter
+
+  -- gen verification code
+  vCode <- liftIO $ stringRandomIO "[A-Za-z0-9]{16}"
+
+  atomically . runExceptT $ do
+    state <- lift $ readTVar tvar
+    -- does this username already exist?
+    let auths = stateAuths state
+        username = D.authUsername auth
+        isDuplicate = any (username ==) . map (D.authUsername . snd) $ auths
+    when isDuplicate $ throwError D.RegistrationErrorUsernameTaken
+    -- update the state
+    let newUserId = stateUserIdCounter state + 1
+        newAuths = (newUserId, auth) : auths
+        unverifieds = stateUnverifiedUsernames state
+        newUnverifieds = insertMap vCode username unverifieds
+        newState = state
+          { stateAuths = newAuths
+          , stateUserIdCounter = newUserId
+          , stateUnverifiedUsernames = newUnverifieds 
+          }
+    lift $ writeTVar tvar newState
+    return vCode
 
 setUsernameAsVerified
   :: InMemory r m
   => D.VerificationCode
   -> m (Either D.UsernameVerificationError ())
-setUsernameAsVerified = undefined
+setUsernameAsVerified vcode = do
+  tvar <- asks getter
+  atomically . runExceptT $ do
+    state <- lift $ readTVar tvar
+    let mayUsername = (vcode `lookup`) $ stateUnverifiedUsernames state
+    case mayUsername of
+      Nothing       -> throwError D.UsernameVerificationErrorInvalidCode
+      Just username -> do
+        let newUnverifieds =
+              (vcode `deleteMap`) $ stateUnverifiedUsernames state
+            newVerifieds =
+              (username `insertSet`) $ stateVerifiedUsernames state
+            newState = state { stateUnverifiedUsernames = newUnverifieds
+                             , stateVerifiedUsernames   = newVerifieds
+                             }
+        lift $ writeTVar tvar newState
 
 findUserByAuth :: InMemory r m => D.Auth -> m (Maybe (D.UserId, Bool))
-findUserByAuth = undefined
+findUserByAuth auth = do
+  tvar  <- asks getter
+  state <- liftIO $ readTVarIO tvar
+  let isVerified = (D.authUsername auth `elem`) $ stateVerifiedUsernames state
+      mayUid     = map fst . find ((auth ==) . snd) $ stateAuths state
+  return $ (, isVerified) <$> mayUid
 
 findUsernameFromUserId :: InMemory r m => D.UserId -> m (Maybe D.Username)
-findUsernameFromUserId = undefined
+findUsernameFromUserId uId = do
+  tvar  <- asks getter
+  state <- liftIO $ readTVarIO tvar
+  let mayAuth = map snd . find ((uId ==) . fst) $ stateAuths state
+  return $ D.authUsername <$> mayAuth
 
 notifyUsernameVerification
   :: InMemory r m => D.Username -> D.VerificationCode -> m ()
-notifyUsernameVerification = undefined
+notifyUsernameVerification username vCode = do
+  tvar <- asks getter
+  atomically $ do
+    state <- readTVar tvar
+    let notifications    = stateNotifications state
+        newNotifications = insertMap username vCode notifications
+        newState         = state { stateNotifications = newNotifications }
+    writeTVar tvar newState
+
+getNotificationsForUsername
+  :: InMemory r m => D.Username -> m (Maybe D.VerificationCode)
+getNotificationsForUsername username = do
+  tvar  <- asks getter
+  state <- liftIO $ readTVarIO tvar
+  return $ lookup username $ stateNotifications state
 
 newSession :: InMemory r m => D.UserId -> m D.SessionId
-newSession = undefined
+newSession uId = do
+  tvar <- asks getter
+  sId  <- liftIO $ ((tshow uId) <>) <$> stringRandomIO "[A-Za-z0-9]{16}"
+  atomically $ do
+    state <- readTVar tvar
+    let sessions    = stateSessions state
+        newSessions = insertMap sId uId sessions
+        newState    = state { stateSessions = newSessions }
+    writeTVar tvar newState
+    return sId
 
 findUserIdBySessionId :: InMemory r m => D.SessionId -> m (Maybe D.UserId)
-findUserIdBySessionId = undefined
+findUserIdBySessionId sId = do
+  tvar <- asks getter
+  liftIO $ lookup sId . stateSessions <$> readTVarIO tvar
+

@@ -43,7 +43,7 @@ packages:
 extra-deps:
 # - transformers-either-0.1.1@sha256:ec3d6fefd90e243b51aecebfc0ebc5db6381c261d473ea2df7ed7b501a8fb961,1501
 - lens-tutorial-1.0.4@sha256:325b59b7658f035d11386589c57d603ee27573f191ed8380dc2a890102bfe143,1199
-
+- string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

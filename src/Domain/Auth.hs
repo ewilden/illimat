@@ -80,17 +80,8 @@ verifyUsername
   :: AuthRepo m => VerificationCode -> m (Either UsernameVerificationError ())
 verifyUsername = setUsernameAsVerified
 
-instance AuthRepo IO where
-  addAuth (Auth username pass) = do
-    putStrLn $ "adding auth: " <> rawUsername username
-    return $ Right "fake verification code"
-
 class Monad m => UsernameVerificationNotif m where
   notifyUsernameVerification :: Username -> VerificationCode -> m ()
-
-instance UsernameVerificationNotif IO where
-  notifyUsernameVerification username vcode =
-    putStrLn $ "Notify " <> rawUsername username <> " - " <> vcode
 
 register
   :: (AuthRepo m, UsernameVerificationNotif m)

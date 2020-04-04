@@ -21,7 +21,7 @@ import           Elm.Derive
 -- $(deriveBoth defaultOptions ''CardSeason)
 -- $(deriveBoth defaultOptions ''PlayerState)
 -- $(deriveBoth defaultOptions ''Luminary)
-
+myOptions :: Options
 myOptions = Elm.Derive.defaultOptions
   { fieldLabelModifier = \s -> if take 1 s == "_" then drop 1 s else s
   }

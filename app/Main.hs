@@ -2,15 +2,15 @@ module Main where
 
 import ClassyPrelude hiding (delete)
 import GameLogic
-import ElmConnect
+-- import ElmConnect
 import qualified Prelude as Prelude ((!!))
-import Prelude (flip)
+-- import Prelude (flip)
 import qualified System.Random as System.Random
 import qualified Control.Monad.State.Lazy as LazyS
-import Data.Aeson hiding (json)
-import Data.Text.Conversions
+-- import Data.Aeson hiding (json)
+-- import Data.Text.Conversions
 
-import qualified Data.ByteString.Lazy as LBS (putStrLn)
+-- import qualified Data.ByteString.Lazy as LBS (putStrLn)
 
 import Web.Scotty.Trans
 import Network.Wai.Middleware.Cors

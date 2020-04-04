@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module GameLogic where
 
-import           Prelude                        ( head )
+-- import           Prelude                        ( head )
 import           ClassyPrelude           hiding ( pred
                                                 , succ
                                                 , sequence_
@@ -11,18 +11,18 @@ import qualified ClassyPrelude                 as Unsafe
                                                 , succ
                                                 )
 import           Control.Monad.State.Lazy
-import           Data.Sort
+-- import           Data.Sort
 
-import           Data.Text.Conversions
+-- import           Data.Text.Conversions
 
 import           Elm.Derive
-import           Elm.Module
+-- import           Elm.Module
 
 -- import           Data.Aeson
-import           Data.Proxy
+-- import           Data.Proxy
 
 import           Control.Lens
-import           Control.Lens.TH
+-- import           Control.Lens.TH
 
 import           ElmConnect                     ( myOptions )
 
@@ -207,14 +207,14 @@ type GameStateM = State GameState
 
 patchListAt :: Int -> (a -> a) -> [a] -> Maybe [a]
 patchListAt n f l = case splitAt n l of
-  (pre, x : post) -> Just $ pre ++ ((f x) : post)
+  (pre_, x : post) -> Just $ pre_ ++ (f x : post)
   _               -> Nothing
 
 -- <&> = flip <$>
 
 patchListEith :: s -> Int -> (a -> Either s a) -> [a] -> Either s [a]
 patchListEith failMsg ind f ls = case splitAt ind ls of
-  (pre, x : post) -> (f x) <&> (: post) <&> (pre ++)
+  (pre_, x : post) -> f x <&> (: post) <&> (pre_ ++)
   _               -> Left failMsg
 
 type FailableGameAction a = StateT GameState (Either String) a
@@ -464,10 +464,10 @@ stockpile playerIndex card dir targetStacks desiredStackVal = do
 sow :: Bool -> PlayerIndex -> Card -> Direction -> FailableGameAction ()
 sow ignoreAutumnForTheRake playerIndex card dir = do
   currPlayer <- getPlayerS playerIndex
-  checkS (card `elem` (_playerHand currPlayer))
+  checkS (card `elem` _playerHand currPlayer)
          "Player doesn't have the card they tried to sow!"
   (_, season) <- withS $ fieldSFromDir dir
-  checkNotS (season == Autumn && (not ignoreAutumnForTheRake))
+  checkNotS (season == Autumn && not ignoreAutumnForTheRake)
             "Can't sow because it's autumn!"
   removeCardsFromPlayersHand playerIndex [card]
   updateState $ mapFieldM
@@ -496,7 +496,7 @@ harvest playerIndex playedCards fieldDir targetStacks = do
     ==     2
     )
     "Harvested with the wrong number of cards!"
-  checkNotS (currSeason == Winter && (not maidenIsActive))
+  checkNotS (currSeason == Winter && not maidenIsActive)
             "Can't harvest because it's winter!"
   checkS stacksAreInField
          "Can't harvest because target stacks aren't in the field!"
@@ -516,7 +516,7 @@ harvest playerIndex playedCards fieldDir targetStacks = do
 
   -- re-fill player's hand up to 4
   resultingPlayer <- getPlayerS playerIndex
-  doNTimes (4 - (length $ _playerHand resultingPlayer))
+  doNTimes (4 - length (_playerHand resultingPlayer))
            (doAllowingFailure $ dealCardToPlayer playerIndex)
 
   -- check if player has cleared the field
