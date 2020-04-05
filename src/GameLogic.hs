@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 module GameLogic where
 
 -- import           Prelude                        ( head )
@@ -782,6 +781,14 @@ toNumberValWithFoolAsFourteen otherVal =
 -- myOptions = Elm.Derive.defaultOptions
 --   { fieldLabelModifier = \s -> if take 1 s == "_" then drop 1 s else s
 --   }
+
+data GameStateView = GameStateView
+  { -- TODO
+  } deriving (Show, Eq)
+
+data Move = Move
+  { _movePlayerIndex :: PlayerIndex
+  } deriving (Show, Eq)
 
 $(deriveBoth myOptions ''GameState)
 $(deriveBoth myOptions ''IllimatState)
