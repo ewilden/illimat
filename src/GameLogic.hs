@@ -786,9 +786,15 @@ data GameStateView = GameStateView
   { -- TODO
   } deriving (Show, Eq)
 
+computeViewForPlayer :: PlayerIndex -> GameState -> GameStateView
+computeViewForPlayer = error "computeViewForPlayer: not implemented yet"
+
 data Move = Move
-  { _movePlayerIndex :: PlayerIndex
+  { -- TODO
   } deriving (Show, Eq)
+
+executeMove :: PlayerIndex -> Move -> FailableGameAction ()
+executeMove = error "executeMove: not implemented yet"
 
 $(deriveBoth myOptions ''GameState)
 $(deriveBoth myOptions ''IllimatState)
