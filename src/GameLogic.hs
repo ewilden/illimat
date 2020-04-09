@@ -216,9 +216,9 @@ patchListEith failMsg ind f ls = case splitAt ind ls of
   (pre_, x : post) -> f x <&> (: post) <&> (pre_ ++)
   _               -> Left failMsg
 
-type FailableGameAction a = StateT GameState (Either String) a
+type FailableGameAction a = StateT GameState (Either Text) a
 
-runGS :: FailableGameAction a -> GameState -> Either String (a, GameState)
+runGS :: FailableGameAction a -> GameState -> Either Text (a, GameState)
 runGS action gs = (runStateT action gs)
 
 toEith :: s -> Maybe a -> Either s a
@@ -289,7 +289,7 @@ getPlayerS ind = do
     Nothing     -> returnLeft "That player doesn't exist!"
     Just player -> return player
 
-returnLeft :: String -> FailableGameAction a
+returnLeft :: Text -> FailableGameAction a
 returnLeft s = StateT (\_ -> Left s)
 
 removeCardStackFromField :: CardStack -> Direction -> FailableGameAction ()
@@ -332,7 +332,7 @@ withS f = f <$> get
 updateStatePure :: (GameState -> GameState) -> FailableGameAction ()
 updateStatePure f = updateState (return . f)
 
-updateState :: (GameState -> Either String GameState) -> FailableGameAction ()
+updateState :: (GameState -> Either Text GameState) -> FailableGameAction ()
 updateState f = do
   s <- get
   case f s of
@@ -341,17 +341,17 @@ updateState f = do
 
 mapPlayerM
   :: PlayerIndex
-  -> (PlayerState -> Either String PlayerState)
-  -> (GameState -> Either String GameState)
+  -> (PlayerState -> Either Text PlayerState)
+  -> (GameState -> Either Text GameState)
 mapPlayerM playerInd f gs =
   let prevPlayers = _gamePlayerState gs
       patchResult = patchListEith "no such player" playerInd f prevPlayers
   in  (\nextPlayers -> gs { _gamePlayerState = nextPlayers }) <$> patchResult
 
-checkS :: Bool -> String -> FailableGameAction ()
+checkS :: Bool -> Text -> FailableGameAction ()
 checkS cond failureMsg = if cond then return () else returnLeft failureMsg
 
-checkNotS :: Bool -> String -> FailableGameAction ()
+checkNotS :: Bool -> Text -> FailableGameAction ()
 checkNotS failCond failureMsg =
   if failCond then returnLeft failureMsg else return ()
 

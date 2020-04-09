@@ -8,7 +8,7 @@ import qualified Prelude as Prelude ((!!))
 import qualified System.Random as System.Random
 import qualified Control.Monad.State.Lazy as LazyS
 -- import Data.Aeson hiding (json)
--- import Data.Text.Conversions
+import Data.Text.Conversions
 
 -- import qualified Data.ByteString.Lazy as LBS (putStrLn)
 
@@ -35,7 +35,7 @@ initEmptyGameState numPlayers = do
   
 blindlyDo :: GameState -> FailableGameAction a -> IO GameState
 blindlyDo gs action = case LazyS.runStateT action gs of
-  Left s -> error s
+  Left s -> error $ convertText s
   Right (_, news) -> return news
 
 -- main :: IO ()

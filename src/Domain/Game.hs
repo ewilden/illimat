@@ -77,6 +77,10 @@ data JoinGameResponse = JoinGameResponse
 
 data MakeMoveError 
   = MakeMoveErrorInvalidMove Text
+  | MakeMoveErrorNoSuchGame
+  | MakeMoveErrorPlayerNotInGame
+  | MakeMoveErrorGameNotStartedYet
+  | MakeMoveErrorGameAlreadyFinished
   deriving (Show, Eq)
 
 data MakeMoveRequest = MakeMoveRequest

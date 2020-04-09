@@ -92,6 +92,39 @@ joinGame (D.JoinGameRequest uid gid) = do
             lift $ writeTVar tvar newState
             return $ D.JoinGameResponse $ D.computeViewForPlayer newPlayerIndex newGame
           )
+
+makeMove :: InMemory r m => D.MakeMoveRequest -> m (Either D.MakeMoveError D.MakeMoveResponse)
+makeMove (D.MakeMoveRequest uid gid move) = do
+  tvar <- asks getter
+  atomically . runExceptT $ do
+    state <- lift $ readTVar tvar
+    let mayGame :: Maybe D.Game
+        mayGame = lookup gid (_sGames state)
+    case mayGame of
+      Nothing -> throwError D.MakeMoveErrorNoSuchGame
+      Just game -> do
+        let usersInGame = D._gamePlayers game
+        let mayPlayerIndex = lookup uid $ zip usersInGame [0..]
+        case mayPlayerIndex of
+          Nothing -> throwError D.MakeMoveErrorPlayerNotInGame
+          Just playerIndex -> case D._gameData game of
+            D.GameDataStarting _ -> throwError D.MakeMoveErrorGameNotStartedYet
+            D.GameDataFinished _ -> throwError D.MakeMoveErrorGameAlreadyFinished
+            D.GameDataRunning (D.RunningGame gameState) -> do
+              case flip GL.runGS gameState $ GL.executeMove playerIndex move of
+                Left err -> throwError $ D.MakeMoveErrorInvalidMove err
+                Right (_, nextGameState) -> do
+                  let 
+                    newGame = game {
+                      D._gameData = D.GameDataRunning (D.RunningGame nextGameState)
+                    }
+                    newState = state {
+                      _sGames = insertMap gid newGame $ _sGames state 
+                    }
+                  lift $ writeTVar tvar newState
+                  return $ D.MakeMoveResponse $ D.computeViewForPlayer playerIndex newGame
+                  -- TODO: keep track of whose turn it is.
+              
     
 shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
 shuffle x g = if length x < 2 then (x, g) else 
