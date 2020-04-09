@@ -124,6 +124,19 @@ makeMove (D.MakeMoveRequest uid gid move) = do
                   lift $ writeTVar tvar newState
                   return $ D.MakeMoveResponse $ D.computeViewForPlayer playerIndex newGame
                   -- TODO: keep track of whose turn it is.
+
+getGameView :: InMemory r m => D.GetGameViewRequest -> m (Either D.GetGameViewError D.GetGameViewResponse)
+getGameView (D.GetGameViewRequest uid gid) = do
+  tvar <- asks getter
+  state <- liftIO $ readTVarIO tvar
+  runExceptT $ do
+    case lookup gid (_sGames state) of
+      Nothing -> throwError D.GetGameViewErrorNoSuchGame
+      Just game -> do
+        case lookup uid $ zip (D._gamePlayers game) [0..] of
+          Nothing -> throwError D.GetGameViewErrorUserNotInGame
+          Just playerIndex -> return $ D.GetGameViewResponse $ D.computeViewForPlayer playerIndex game
+
               
     
 shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
