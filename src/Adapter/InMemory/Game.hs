@@ -14,7 +14,6 @@ import qualified Prelude as Prelude ((!!))
 import qualified Domain.Auth as D.Auth
 import qualified Domain.Game as D
 import qualified GameLogic as GL
--- import qualified GameLogic as GL
 
 data State = State
   { _sGames :: Map D.GameId D.Game
