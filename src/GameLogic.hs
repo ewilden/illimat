@@ -9,6 +9,7 @@ import qualified ClassyPrelude                 as Unsafe
                                                 ( pred
                                                 , succ
                                                 )
+import qualified Prelude as Prelude ((!!))
 import           Control.Monad.State.Lazy
 -- import           Data.Sort
 
@@ -58,6 +59,30 @@ data GameState = GameState
     , _gameChildrenCards :: [Card]
     } deriving (Show)
 
+data GameStateView = GameStateView
+  { _viewIllimatState :: IllimatState
+  , _viewBoardState :: BoardStateView
+  , _viewPlayerState :: (PlayerState, [OtherPlayerView])
+  , _viewDeck :: Int -- num cards in deck
+  -- nothing for unused luminaries
+  -- nothing for children cards (whenever the Children is face up, it has cards)
+  } deriving (Show, Eq)
+
+computeViewForPlayer :: PlayerIndex -> GameState -> GameStateView
+computeViewForPlayer playerIndex (GameState ill board players deck unusedLums childrenCards) =
+  GameStateView 
+    { _viewIllimatState = ill
+    , _viewBoardState = computeBoardView board
+    , _viewPlayerState = ( players Prelude.!! playerIndex
+                         , players & (map computePlayerView) 
+                                   . (map snd) 
+                                   . (filter (\(i, _) -> i /= playerIndex)) 
+                                   . (zip [0..])
+                         )
+    , _viewDeck = length deck
+    }
+
+
 boxIdent :: (a -> a) -> (a -> Identity a)
 boxIdent f = Identity . f
 
@@ -102,12 +127,29 @@ data PlayerState = PlayerState
     , _playerNumOkuses :: Int
     , _playerLuminaries :: [Luminary]
     , _playerHarvestPile :: [Card]
-    } deriving (Show)
+    } deriving (Show, Eq)
+
+data OtherPlayerView = OtherPlayerView
+  { _viewOtherPlayerNumCardsInHand :: Int
+  , _viewOtherPlayerNumOkuses :: Int
+  , _viewOtherPlayerLuminaries :: [Luminary]
+  , _viewOtherPlayerHarvestPileSize :: Int 
+      -- how many face down cards to show. Consider bucketing to reduce info
+  } deriving (Show, Eq)
+
+computePlayerView :: PlayerState -> OtherPlayerView
+computePlayerView (PlayerState hand numOkuses lums harvestPile) =
+  OtherPlayerView
+    { _viewOtherPlayerNumCardsInHand = length hand
+    , _viewOtherPlayerNumOkuses = numOkuses
+    , _viewOtherPlayerLuminaries = lums
+    , _viewOtherPlayerHarvestPileSize = (length harvestPile) `div` 4
+    }
 
 data IllimatState = IllimatState
     { _illSummerDir :: Direction
     , _illNumOkuses :: Int
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 data BoardState = BoardState
     { _bsFieldN :: FieldState
@@ -116,14 +158,45 @@ data BoardState = BoardState
     , _bsFieldW :: FieldState
     } deriving (Show)
 
+data BoardStateView = BoardStateView
+    { _viewFieldN :: FieldStateView
+    , _viewFieldE :: FieldStateView
+    , _viewFieldS :: FieldStateView
+    , _viewFieldW :: FieldStateView
+    } deriving (Show, Eq)
+
+computeBoardView :: BoardState -> BoardStateView
+computeBoardView (BoardState n e s w) =
+  BoardStateView
+    (computeFieldView n)
+    (computeFieldView e)
+    (computeFieldView s)
+    (computeFieldView w)
+
 data FieldState = FieldState
     { _fieldCards :: [CardStack]
     , _fieldLuminary :: LuminaryState
     } deriving (Show)
 
+data FieldStateView = FieldStateView
+  { _viewFieldCards :: [CardStack]
+  , _viewFieldLuminary :: LuminaryStateView 
+  } deriving (Show, Eq)
+
+computeFieldView :: FieldState -> FieldStateView
+computeFieldView (FieldState cards lum) =
+  FieldStateView
+    cards
+    (case lum of
+      NoLuminary -> NoLuminaryView
+      FaceDown _ -> FaceDownView
+      FaceUp l -> FaceUpView l
+    )
+
 data LuminaryState = FaceUp Luminary | FaceDown Luminary | NoLuminary deriving (Show, Eq)
 data Luminary = Union | Maiden | Rake | River | Changeling | Newborn | Forest_Queen | Children
     deriving (Show, Eq, Enum, Bounded)
+data LuminaryStateView = FaceUpView Luminary | FaceDownView | NoLuminaryView deriving (Show, Eq)
 
 data CardStack = CardStack [Int] [Card] deriving (Show, Eq)
 data CardVal = Fool | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Knight | Queen | King
@@ -781,13 +854,6 @@ toNumberValWithFoolAsFourteen otherVal =
 -- myOptions = Elm.Derive.defaultOptions
 --   { fieldLabelModifier = \s -> if take 1 s == "_" then drop 1 s else s
 --   }
-
-data GameStateView = GameStateView
-  { -- TODO
-  } deriving (Show, Eq)
-
-computeViewForPlayer :: PlayerIndex -> GameState -> GameStateView
-computeViewForPlayer = error "computeViewForPlayer: not implemented yet"
 
 data Move = Move
   { -- TODO

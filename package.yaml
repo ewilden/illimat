@@ -45,6 +45,7 @@ dependencies:
 - data-has
 - lens-tutorial
 - string-random
+- more-containers
 # - transformers-either 
 
 default-extensions:

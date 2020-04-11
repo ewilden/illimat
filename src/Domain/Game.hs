@@ -19,13 +19,16 @@ data GameData =
   deriving (Show)
 
 data GameView = GameView
-  { _gvGameId :: GameId
-  , _gvData :: GameViewData
-  , _gvPlayers :: [D.Auth.UserId]
+  { _gvData :: GameViewData
   } deriving (Show, Eq)
 
 computeViewForPlayer :: GL.PlayerIndex -> Game -> GameView
-computeViewForPlayer = error "computeViewForPlayer: not implemented yet"
+computeViewForPlayer playerIndex (Game gid gameData players) = 
+  GameView $ case gameData of
+    GameDataStarting g -> GameViewStarting g
+    GameDataFinished g -> GameViewFinished g
+    GameDataRunning (RunningGame gameState) -> 
+      GameViewRunning $ GL.computeViewForPlayer playerIndex gameState
 
 data GameViewData =
   GameViewRunning GL.GameStateView
@@ -52,6 +55,7 @@ data CreateGameRequest = CreateGameRequest
 
 data CreateGameResponse = CreateGameResponse
   { _cgrespGameView :: GameView
+  , _cgrespGameId :: GameId
   } deriving (Show)
 
 data CreateGameError

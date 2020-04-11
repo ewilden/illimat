@@ -4,7 +4,24 @@ import ClassyPrelude
 import Control.Monad.Fail
 
 import qualified Adapter.InMemory.Auth as M
+import qualified Adapter.InMemory.Game as G
 import Domain.Auth
+import Domain.Game
+
+type GameRepoState = TVar G.State
+newtype GameStack a = GameStack
+  { unGameStack :: ReaderT GameRepoState IO a
+  } deriving (Applicative, Functor, Monad, MonadReader GameRepoState, MonadIO, MonadFail)
+
+runGameStack :: GameRepoState -> GameStack a -> IO a
+runGameStack state = flip runReaderT state . unGameStack
+
+instance GameRepo GameStack where
+  createGame = G.createGame
+  joinGame = G.joinGame
+  makeMove = G.makeMove
+  getGameView = G.getGameView
+  getGamesForUser = G.getGamesForUser
 
 type State = TVar M.State
 newtype App a = App

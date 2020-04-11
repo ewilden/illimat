@@ -5,6 +5,7 @@ module Adapter.InMemory.Game where
 import ClassyPrelude
 import           Control.Monad.Except
 import           Data.Has
+import qualified Data.Multimap as Mmap
 import           Text.StringRandom
 import qualified GameLogic as GL
 import qualified System.Random as Random
@@ -12,20 +13,21 @@ import qualified Prelude as Prelude ((!!))
 
 import Control.Arrow
 
--- import qualified Domain.Auth as D.Auth
+import qualified Domain.Auth as D.Auth
 import qualified Domain.Game as D
 -- import qualified GameLogic as GL
 
 data State = State
   { _sGames :: Map D.GameId D.Game
-  }
+  , _sUserToGames :: Mmap.ListMultimap D.Auth.UserId D.GameId
+  } deriving (Show)
 
 infixl 0 |>
 (|>) :: a -> (a -> b) -> b
 x |> f = f x
 
 initialState :: State
-initialState = State mempty
+initialState = State mempty mempty
 
 type InMemory r m = (Has (TVar State) r, MonadReader r m, MonadIO m)
 
@@ -45,9 +47,10 @@ createGame req = do
                     }
         newState = state
           { _sGames = insertMap gid newGame $ _sGames state 
+          , _sUserToGames = Mmap.prepend (D._cgreqGameOwner req) gid $ _sUserToGames state
           }
     lift $ writeTVar tvar newState
-    return $ D.CreateGameResponse $ D.computeViewForPlayer 0 newGame
+    return $ D.CreateGameResponse (D.computeViewForPlayer 0 newGame) gid
   
 joinGame :: InMemory r m => D.JoinGameRequest -> m (Either D.JoinGameError D.JoinGameResponse)
 joinGame (D.JoinGameRequest uid gid) = do
@@ -86,8 +89,9 @@ joinGame (D.JoinGameRequest uid gid) = do
                       }
                     }
                 else gameWithPlayerAdded
-              newState = state {
-                _sGames = insertMap gid newGame $ _sGames state
+              newState = state 
+                { _sGames = insertMap gid newGame $ _sGames state
+                , _sUserToGames = Mmap.prepend uid gid $ _sUserToGames state
                 }
             lift $ writeTVar tvar newState
             return $ D.JoinGameResponse $ D.computeViewForPlayer newPlayerIndex newGame
@@ -137,7 +141,11 @@ getGameView (D.GetGameViewRequest uid gid) = do
           Nothing -> throwError D.GetGameViewErrorUserNotInGame
           Just playerIndex -> return $ D.GetGameViewResponse $ D.computeViewForPlayer playerIndex game
 
-              
+getGamesForUser :: InMemory r m => D.GetGamesForUserRequest -> m D.GetGamesForUserResponse
+getGamesForUser (D.GetGamesForUserRequest uid) = do
+  tvar <- asks getter
+  state <- liftIO $ readTVarIO tvar
+  return $ D.GetGamesForUserResponse $ Mmap.find uid $ _sUserToGames state
     
 shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
 shuffle x g = if length x < 2 then (x, g) else 
