@@ -12,8 +12,8 @@ data Game = Game
   , _gamePlayers :: [D.Auth.UserId]
   } deriving (Show)
 
-data GameData =
-  GameDataRunning RunningGame
+data GameData 
+  = GameDataRunning RunningGame
   | GameDataStarting StartingGame
   | GameDataFinished FinishedGame
   deriving (Show)
@@ -30,8 +30,8 @@ computeViewForPlayer playerIndex (Game gid gameData players) =
     GameDataRunning (RunningGame gameState) -> 
       GameViewRunning $ GL.computeViewForPlayer playerIndex gameState
 
-data GameViewData =
-  GameViewRunning GL.GameStateView
+data GameViewData 
+  = GameViewRunning GL.GameStateView
   | GameViewStarting StartingGame
   | GameViewFinished FinishedGame
   deriving (Show, Eq)
@@ -106,8 +106,8 @@ data GetGameViewResponse = GetGameViewResponse
   { _ggvrespGameView :: GameView
   } deriving (Show, Eq)
 
-data GetGameViewError =
-  GetGameViewErrorNoSuchGame
+data GetGameViewError 
+  = GetGameViewErrorNoSuchGame
   | GetGameViewErrorUserNotInGame
   deriving (Show, Eq)
 

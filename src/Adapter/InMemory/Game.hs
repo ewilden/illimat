@@ -3,18 +3,17 @@
 module Adapter.InMemory.Game where
 
 import ClassyPrelude
+import Control.Arrow
 import           Control.Monad.Except
 import           Data.Has
 import qualified Data.Multimap as Mmap
 import           Text.StringRandom
-import qualified GameLogic as GL
 import qualified System.Random as Random
 import qualified Prelude as Prelude ((!!))
 
-import Control.Arrow
-
 import qualified Domain.Auth as D.Auth
 import qualified Domain.Game as D
+import qualified GameLogic as GL
 -- import qualified GameLogic as GL
 
 data State = State
