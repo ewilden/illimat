@@ -57,6 +57,7 @@ data GameState = GameState
     , _gameDeck :: [Card]
     , _gameUnusedLuminaries :: [Luminary]
     , _gameChildrenCards :: [Card]
+    , _gameWhoseTurn :: WhoseTurn
     } deriving (Show)
 
 data GameStateView = GameStateView
@@ -66,10 +67,17 @@ data GameStateView = GameStateView
   , _viewDeck :: Int -- num cards in deck
   -- nothing for unused luminaries
   -- nothing for children cards (whenever the Children is face up, it has cards)
+  , _viewWhoseTurn :: WhoseTurn
   } deriving (Show, Eq)
 
+data WhoseTurn = WhoseTurn PlayerIndex RakeTurn
+  deriving (Show, Eq)
+
+data RakeTurn = NoRake | RakeBoth | RakeSow | RakeOtherMove
+  deriving (Show, Eq)
+
 computeViewForPlayer :: PlayerIndex -> GameState -> GameStateView
-computeViewForPlayer playerIndex (GameState ill board players deck unusedLums childrenCards) =
+computeViewForPlayer playerIndex (GameState ill board players deck unusedLums childrenCards whoseTurn) =
   GameStateView 
     { _viewIllimatState = ill
     , _viewBoardState = computeBoardView board
@@ -80,6 +88,7 @@ computeViewForPlayer playerIndex (GameState ill board players deck unusedLums ch
                                    . (zip [0..])
                          )
     , _viewDeck = length deck
+    , _viewWhoseTurn = whoseTurn
     }
 
 
@@ -211,6 +220,12 @@ data Season = Summer | Spring | Winter | Autumn
 data Direction = N | E | S | W
     deriving (Show, Eq, Enum, Bounded)
 
+indexFromN :: Direction -> Int
+indexFromN N = 0
+indexFromN E = 1
+indexFromN S = 2
+indexFromN W = 3
+
 fieldSFromDir :: Direction -> GameState -> (FieldState, Season)
 fieldSFromDir dir gs =
   (fieldGetter dir $ (_gameBoardState gs), seasonFromDir dir gs)
@@ -265,6 +280,7 @@ emptyGameState numPlayers initSummerDir startingDeck startingLuminaryDeck =
             , _gameDeck             = startingDeck
             , _gameUnusedLuminaries = startingLuminaryDeck
             , _gameChildrenCards    = []
+            , _gameWhoseTurn = WhoseTurn (indexFromN initSummerDir) NoRake
             }
  where
   emptyBoard  = BoardState emptyField emptyField emptyField emptyField
@@ -533,13 +549,14 @@ stockpile playerIndex card dir targetStacks desiredStackVal = do
     (\fs -> return $ fs { _fieldCards = resultingStack : (_fieldCards fs) })
   resolveSeasonChange card dir
 
-sow :: Bool -> PlayerIndex -> Card -> Direction -> FailableGameAction ()
-sow ignoreAutumnForTheRake playerIndex card dir = do
+sow :: PlayerIndex -> Card -> Direction -> FailableGameAction ()
+sow playerIndex card dir = do
+  fieldHasFaceUpRake <- withS $ (== FaceUp Rake) . _fieldLuminary . fieldFromDir dir
   currPlayer <- getPlayerS playerIndex
   checkS (card `elem` _playerHand currPlayer)
          "Player doesn't have the card they tried to sow!"
   (_, season) <- withS $ fieldSFromDir dir
-  checkNotS (season == Autumn && not ignoreAutumnForTheRake)
+  checkNotS (season == Autumn && not fieldHasFaceUpRake)
             "Can't sow because it's autumn!"
   removeCardsFromPlayersHand playerIndex [card]
   updateState $ mapFieldM
@@ -855,12 +872,17 @@ toNumberValWithFoolAsFourteen otherVal =
 --   { fieldLabelModifier = \s -> if take 1 s == "_" then drop 1 s else s
 --   }
 
-data Move = Move
-  { -- TODO
-  } deriving (Show, Eq)
+data Move
+  = Harvest [Card] Direction [CardStack]
+  | Sow Card Direction
+  | Stockpile Card Direction [CardStack] Int
+  deriving (Show, Eq)
 
 executeMove :: PlayerIndex -> Move -> FailableGameAction ()
-executeMove = error "executeMove: not implemented yet"
+executeMove playerIndex move = case move of
+  Harvest cards dir stacks -> harvest playerIndex cards dir stacks
+  Sow card dir -> sow playerIndex card dir
+  Stockpile card dir stacks desiredStackVal -> stockpile playerIndex card dir stacks desiredStackVal
 
 $(deriveBoth myOptions ''GameState)
 $(deriveBoth myOptions ''IllimatState)
@@ -874,6 +896,8 @@ $(deriveBoth myOptions ''CardVal)
 $(deriveBoth myOptions ''CardSeason)
 $(deriveBoth myOptions ''PlayerState)
 $(deriveBoth myOptions ''Luminary)
+$(deriveBoth myOptions ''WhoseTurn)
+$(deriveBoth myOptions ''RakeTurn)
 
 
 makeLenses ''GameState
