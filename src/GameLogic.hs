@@ -444,11 +444,8 @@ checkNotS :: Bool -> Text -> FailableGameAction ()
 checkNotS failCond failureMsg =
   if failCond then returnLeft failureMsg else return ()
 
-seqDo :: [FailableGameAction a] -> FailableGameAction ()
-seqDo = sequence_
-
 doNTimes :: Int -> FailableGameAction a -> FailableGameAction ()
-doNTimes n action = seqDo $ map (\_ -> action) $ (replicate n () :: [()])
+doNTimes n action = sequence_ $ map (const action) $ (replicate n () :: [()])
 
 playerHasCards :: PlayerIndex -> [Card] -> GameState -> Bool
 playerHasCards playerInd cards gs = case getPlayer playerInd gs of
@@ -469,7 +466,7 @@ addCardStacksToHarvestPile playerIndex stacks = do
 removeCardsFromPlayersHand :: PlayerIndex -> [Card] -> FailableGameAction ()
 removeCardsFromPlayersHand playerIndex cards = do
   playerHasCards' <- withS $ playerHasCards playerIndex cards
-  checkS playerHasCards' "Player doesn't have those cards" -- TODO is this necessary?
+  checkS playerHasCards' "Player doesn't have those cards"
   updateState $ mapPlayerM
     playerIndex
     (\prevPlayer -> return $ prevPlayer
@@ -503,12 +500,12 @@ resolveSeasonChange (Card val cseason) dir =
 
 doInitialGameSetup :: FailableGameAction ()
 doInitialGameSetup = do
-  seqDo (map dealLuminaryToField (allEnum :: [Direction]))
-  seqDo (map deal3CardsToField (allEnum :: [Direction]))
+  sequence_ (map dealLuminaryToField (allEnum :: [Direction]))
+  sequence_ (map deal3CardsToField (allEnum :: [Direction]))
   currPlayers <- withS _gamePlayerState
   (WhoseTurn firstTurnTaker _) <- withS _gameWhoseTurn
   fillPlayersHandToN 3 firstTurnTaker
-  seqDo (map (\(_, i) -> fillPlayersHandToN 4 i) $ filter (\(_, i) -> i /= firstTurnTaker) $ zip currPlayers [0 ..])
+  sequence_ (map (\(_, i) -> fillPlayersHandToN 4 i) $ filter (\(_, i) -> i /= firstTurnTaker) $ zip currPlayers [0 ..])
 
 fillPlayersHandToN :: Int -> PlayerIndex -> FailableGameAction ()
 fillPlayersHandToN numCards playerIndex = do
@@ -563,7 +560,7 @@ stockpile playerIndex card dir targetStacks desiredStackVal = do
 
   -- All checks passed
   removeCardsFromPlayersHand playerIndex [card]
-  seqDo $ map (\stack -> removeCardStackFromField stack dir) targetStacks
+  sequence_ $ map (\stack -> removeCardStackFromField stack dir) targetStacks
   updateState $ mapFieldM
     dir
     (\fs -> return $ fs { _fieldCards = resultingStack : (_fieldCards fs) })
@@ -619,11 +616,11 @@ harvest playerIndex playedCards fieldDir targetStacks = do
   -- all checks passed; remove cards from player's hand, 
   -- and put them & the targeted cards in their harvest stack
   removeCardsFromPlayersHand playerIndex playedCards
-  seqDo (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
+  sequence_ (map (\stack -> removeCardStackFromField stack fieldDir) targetStacks)
   addCardStacksToHarvestPile playerIndex targetStacks
   addCardStacksToHarvestPile playerIndex (map fromCard playedCards)
 
-  seqDo $ map (\card -> resolveSeasonChange card fieldDir) playedCards
+  sequence_ $ map (\card -> resolveSeasonChange card fieldDir) playedCards
 
   -- re-fill player's hand up to 4
   resultingPlayer <- getPlayerS playerIndex
@@ -758,7 +755,7 @@ resolveLuminaryTake lum playerIndex = case lum of
             h : tl -> giveCardFromAToB h ind playerIndex
           h : tl -> giveCardFromAToB h ind playerIndex
     numPlayers <- withS $ (length . _gamePlayerState)
-    seqDo $ map grabSummerCardFrom
+    sequence_ $ map grabSummerCardFrom
                 (filter (/= playerIndex) (take numPlayers [0 ..]))
   Children -> do
     currChildrenCards <- withS _gameChildrenCards
