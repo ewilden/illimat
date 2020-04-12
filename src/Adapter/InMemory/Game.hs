@@ -9,7 +9,6 @@ import           Data.Has
 import qualified Data.Multimap as Mmap
 import           Text.StringRandom
 import qualified System.Random as Random
-import qualified Prelude as Prelude ((!!))
 
 import qualified Domain.Auth as D.Auth
 import qualified Domain.Game as D
@@ -83,7 +82,7 @@ joinGame (D.JoinGameRequest uid gid) = do
                 then 
                   gameWithPlayerAdded {
                     D._gameData = D.GameDataRunning $ D.RunningGame {
-                      D._rgGameState = fst $ initEmptyGameState maxPlayers randgen
+                      D._rgGameState = fst $ D.initEmptyGameState maxPlayers randgen
                       }
                     }
                 else gameWithPlayerAdded
@@ -125,7 +124,6 @@ makeMove (D.MakeMoveRequest uid gid move) = do
                     }
                   lift $ writeTVar tvar newState
                   return $ D.MakeMoveResponse $ D.computeViewForPlayer playerIndex newGame
-                  -- TODO: keep track of whose turn it is.
 
 getGameView :: InMemory r m => D.GetGameViewRequest -> m (Either D.GetGameViewError D.GetGameViewResponse)
 getGameView (D.GetGameViewRequest uid gid) = do
@@ -144,22 +142,3 @@ getGamesForUser (D.GetGamesForUserRequest uid) = do
   tvar <- asks getter
   state <- liftIO $ readTVarIO tvar
   return $ D.GetGamesForUserResponse $ Mmap.find uid $ _sUserToGames state
-    
-shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
-shuffle x g = if length x < 2 then (x, g) else 
-  let
-    (i, g') = Random.randomR (0, length(x) - 1) g
-    (r, g'') = shuffle (take i x ++ drop (i+1) x) g'
-  in
-    ((x Prelude.!! i : r), g'')
-
-initEmptyGameState :: (Random.RandomGen g) => Int -> g -> (GL.GameState, g)
-initEmptyGameState numPlayers g0 =
-  let shuffleCardsFor n g
-        | n >= 4 = shuffle GL.allCards g
-        | otherwise = shuffle GL.allCardsMinusStars g
-      (shuffledDeck, g1) = shuffleCardsFor numPlayers g0
-      (shuffledLums, g2) = shuffle GL.allLuminaries g1
-      (shuffledDirs, g3) = shuffle (GL.allEnum :: [GL.Direction]) g2
-  in 
-    ((GL.emptyGameState numPlayers (shuffledDirs Prelude.!! 0) shuffledDeck shuffledLums), g3)

@@ -11,7 +11,7 @@ import qualified ClassyPrelude                 as Unsafe
                                                 )
 import qualified Prelude as Prelude ((!!))
 import           Control.Monad.State.Lazy
--- import           Data.Sort
+import           Data.Sort
 
 -- import           Data.Text.Conversions
 
@@ -82,7 +82,7 @@ computeViewForPlayer playerIndex (GameState ill board players deck unusedLums ch
     { _viewIllimatState = ill
     , _viewBoardState = computeBoardView board
     , _viewPlayerState = ( players Prelude.!! playerIndex
-                         , players & (map computePlayerView) 
+                         , players & (map computeOtherPlayerView) 
                                    . (map snd) 
                                    . (filter (\(i, _) -> i /= playerIndex)) 
                                    . (zip [0..])
@@ -146,8 +146,8 @@ data OtherPlayerView = OtherPlayerView
       -- how many face down cards to show. Consider bucketing to reduce info
   } deriving (Show, Eq)
 
-computePlayerView :: PlayerState -> OtherPlayerView
-computePlayerView (PlayerState hand numOkuses lums harvestPile) =
+computeOtherPlayerView :: PlayerState -> OtherPlayerView
+computeOtherPlayerView (PlayerState hand numOkuses lums harvestPile) =
   OtherPlayerView
     { _viewOtherPlayerNumCardsInHand = length hand
     , _viewOtherPlayerNumOkuses = numOkuses
@@ -490,7 +490,6 @@ givePlayerOkus playerIndex = do
         (\is -> is { _illNumOkuses = (_illNumOkuses is) - 1 })
     else returnLeft "No more okuses!"
 
-
 resolveSeasonChange :: Card -> Direction -> FailableGameAction ()
 resolveSeasonChange (Card val cseason) dir =
   if val `elem` [Fool, Knight, Queen, King]
@@ -507,12 +506,14 @@ doInitialGameSetup = do
   seqDo (map dealLuminaryToField (allEnum :: [Direction]))
   seqDo (map deal3CardsToField (allEnum :: [Direction]))
   currPlayers <- withS _gamePlayerState
-  seqDo (map (\(_, i) -> fillPlayersHandTo4 i) $ zip currPlayers [0 ..])
+  (WhoseTurn firstTurnTaker _) <- withS _gameWhoseTurn
+  fillPlayersHandToN 3 firstTurnTaker
+  seqDo (map (\(_, i) -> fillPlayersHandToN 4 i) $ filter (\(_, i) -> i /= firstTurnTaker) $ zip currPlayers [0 ..])
 
-fillPlayersHandTo4 :: PlayerIndex -> FailableGameAction ()
-fillPlayersHandTo4 playerIndex = do
+fillPlayersHandToN :: Int -> PlayerIndex -> FailableGameAction ()
+fillPlayersHandToN numCards playerIndex = do
   currPlayer <- getPlayerS playerIndex
-  doNTimes (4 - (length $ _playerHand currPlayer))
+  doNTimes (numCards - (length $ _playerHand currPlayer))
            (doAllowingFailure $ dealCardToPlayer playerIndex)
 
 updateWhoseTurn :: Bool -> FailableGameAction ()
@@ -645,14 +646,14 @@ harvest playerIndex playedCards fieldDir targetStacks = do
           if not succeededInResolvingLuminary
             then
             -- discard the luminary
-                 updateState $ mapFieldM
-              fieldDir
-              (\fs -> return $ fs { _fieldLuminary = NoLuminary })
+              updateState $ mapFieldM
+                fieldDir
+                (\fs -> return $ fs { _fieldLuminary = NoLuminary })
             else
             -- flip it face-up
-                 updateState $ mapFieldM
-              fieldDir
-              (\fs -> return $ fs { _fieldLuminary = FaceUp lum })
+              updateState $ mapFieldM
+                fieldDir
+                (\fs -> return $ fs { _fieldLuminary = FaceUp lum })
           return True
         FaceUp lum -> do
           updateState $ mapFieldM
@@ -837,62 +838,96 @@ toNumberValWithFoolAsFourteen Two = 2
 toNumberValWithFoolAsFourteen otherVal =
   1 + (toNumberValWithFoolAsFourteen $ pred otherVal)
 
-
+isGameOver :: GameState -> Bool
+isGameOver gameState = all (== []) $ map _playerHand $ _gamePlayerState gameState
 
 -- scoring
--- score :: [PlayerState] -> [Int]
--- score players =
---   let maxIndexSet :: (PlayerState -> PlayerState -> Ordering) -> [PlayerState] -> [PlayerIndex]
---       maxIndexSet cmp ls = map snd $ headOr [] $ groupSortBy paircmp (:) $ zip ls [0..]
---         where paircmp (a, i) (b, j) = cmp a b
---       biggerFirst :: (a -> Int) -> a -> a -> Ordering
---       biggerFirst f a b
---         | (f a) > (f b) = LT
---         | (f a) < (f b) = GT
---         | otherwise = EQ
---       tiebreak :: (a -> a -> Ordering) -> (a -> a -> Ordering) -> a -> a -> Ordering
---       tiebreak f g a b = case f a b of
---         EQ -> g a b
---         _ -> f a b
---       invert :: (a -> a -> Ordering) -> a -> a -> Ordering
---       invert f a b = swapLTGT $ f a b
---         where swapLTGT LT = GT
---               swapLTGT GT = LT
---               swapLTGT EQ = EQ
---       byHasRiver :: (PlayerState -> PlayerState -> Ordering)
---       byHasRiver = biggerFirst $ boolToInt . (River `elem`) . _playerLuminaries
---       byLuminaries :: (PlayerState -> PlayerState -> Ordering)
---       byLuminaries = biggerFirst countLuminaries
---       byMostCards :: (PlayerState -> PlayerState -> Ordering)
---       byMostCards = (biggerFirst (length . _playerHarvestPile)) `tiebreak` byLuminaries
---       byMostSummers :: (PlayerState -> PlayerState -> Ordering)
---       byMostSummers = (biggerFirst (sum . (map pointForSummer) . _playerHarvestPile)) `tiebreak` byLuminaries
---         where pointForSummer (Card _ CSummer) = 1
---               pointForSummer _ = 0
---       byMostWinters = (biggerFirst (sum . (map pointForWinter) . _playerHarvestPile)) `tiebreak` byHasRiver `tiebreak` (invert byLuminaries)
---         where pointForWinter (Card _ CWinter) = 1
---               pointForWinter _ = 0
---       onlyAllowOne :: [a] -> Maybe a
---       onlyAllowOne [a] = Just a
---       onlyAllowOne _ = Nothing
---       countFools :: PlayerState -> Int
---       countFools = sum . (map pointForFool) . _playerHarvestPile
---         where pointForFool (Card Fool _) = 1
---               pointForFool _ = 0
---       countLuminaries :: PlayerState -> Int
---       countLuminaries = length . _playerLuminaries
---   in  foldr joinScore (map $ const 0 $ players) scoreSpecs
---         where scoreSpecs = [ (byMostCards, const 4)
---                            , (byMostSummers, const 2)
---                            , (byMostWinters, (\ps -> if River `elem` (_playerLuminaries ps) then 2 else -2))
---                            ]
---               joinScore :: (PlayerState -> PlayerState -> Ordering, PlayerState -> PlayerIndex) -> [Int] -> [Int]
-
-
--- ToJSON generation for elm connection
--- myOptions = Elm.Derive.defaultOptions
---   { fieldLabelModifier = \s -> if take 1 s == "_" then drop 1 s else s
---   }
+score :: [PlayerState] -> [Int]
+score players = flip execState (map (const 0) players) $ do
+  let 
+    givePointsTo :: Int -> PlayerIndex -> State [Int] ()
+    givePointsTo numPoints playerIndex = do
+      currPoints <- get
+      put $ currPoints 
+        & zip [0..] 
+        & map (\x@(ind, pts) -> if ind == playerIndex then (ind, pts + numPoints) else x)
+        & map snd
+    indicesOfHighest :: [(PlayerIndex, Int)] -> [PlayerIndex]
+    indicesOfHighest scores = scores
+      & groupSortBy cmp (:)
+      & headOr []
+      & map fst
+        where cmp (ind1, score1) (ind2, score2) = compare score2 score1
+    luminaryCounts :: [(PlayerIndex, Int)]
+    luminaryCounts = players
+      & map (length . _playerLuminaries)
+      & zip [0..]
+    cardCounts :: [(PlayerIndex, Int)]
+    cardCounts = players
+      & map (length . _playerHarvestPile)
+      & zip [0..]
+    summerCounts :: [(PlayerIndex, Int)]
+    summerCounts = players
+      & map _playerHarvestPile
+      & map (filter (\(Card _ season) -> season == CSummer))
+      & map length
+      & zip [0..]
+    winterCounts :: [(PlayerIndex, Int)]
+    winterCounts = players
+      & map _playerHarvestPile
+      & map (filter (\(Card _ season) -> season == CWinter))
+      & map length
+      & zip [0..]
+    foolCounts :: [(PlayerIndex, Int)]
+    foolCounts = players
+      & map _playerHarvestPile
+      & map (filter (\(Card val _) -> val == Fool))
+      & map length
+      & zip [0..]
+    okusCounts :: [(PlayerIndex, Int)]
+    okusCounts = players
+      & map _playerNumOkuses
+      & zip [0..]
+    givePointForEach :: [(PlayerIndex, Int)] -> State [Int] ()
+    givePointForEach counts = counts
+      & map (\(ind, num) -> givePointsTo num ind)
+      & sequence_
+    forceLookup :: PlayerIndex -> [(PlayerIndex, a)] -> a
+    forceLookup playerIndex playerData = case lookup playerIndex playerData of
+      Nothing -> error "impossible"
+      Just a -> a
+  givePointForEach luminaryCounts
+  givePointForEach okusCounts
+  givePointForEach foolCounts
+  let
+    mostCardPlayers = indicesOfHighest cardCounts
+    mostSummerPlayers = indicesOfHighest summerCounts
+    mostWinterPlayers = indicesOfHighest winterCounts
+    tiebreakByLuminaries :: [PlayerIndex] -> Maybe PlayerIndex
+    tiebreakByLuminaries playerIndices = case playerIndices of
+      [singleWinner] -> Just singleWinner
+      multipleWinners -> do
+        let lumTiebreakCounts = playerIndices
+              & map (\i -> (i, forceLookup i luminaryCounts))
+        case indicesOfHighest lumTiebreakCounts of
+          [finalWinner] -> Just finalWinner
+          _ -> Nothing
+  -- award points for most cards
+  case (tiebreakByLuminaries mostCardPlayers) of
+    Just player -> givePointsTo 4 player
+    Nothing -> return ()
+  case (tiebreakByLuminaries mostSummerPlayers) of
+    Just player -> givePointsTo 2 player
+    Nothing -> return ()
+  case (tiebreakByLuminaries mostWinterPlayers) of
+    Just playerIndex ->
+      if 
+        any (== River) $ _playerLuminaries $ forceLookup playerIndex $ zip [0..] players
+      then
+        givePointsTo 2 playerIndex
+      else
+        givePointsTo (-2) playerIndex
+    Nothing -> return ()
 
 data Move
   = Harvest [Card] Direction [CardStack]

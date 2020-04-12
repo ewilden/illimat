@@ -1,8 +1,11 @@
 module Domain.Game where
 
 import           ClassyPrelude
+import qualified System.Random as Random
+
 import qualified Domain.Auth as D.Auth
 import qualified GameLogic as GL
+import qualified Prelude as Prelude ((!!))
 
 type GameId = Text
 
@@ -125,3 +128,22 @@ class Monad m => GameRepo m where
   makeMove :: MakeMoveRequest -> m (Either MakeMoveError MakeMoveResponse)
   getGameView :: GetGameViewRequest -> m (Either GetGameViewError GetGameViewResponse)
   getGamesForUser :: GetGamesForUserRequest -> m (GetGamesForUserResponse)
+
+shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
+shuffle x g = if length x < 2 then (x, g) else 
+  let
+    (i, g') = Random.randomR (0, length(x) - 1) g
+    (r, g'') = shuffle (take i x ++ drop (i+1) x) g'
+  in
+    ((x Prelude.!! i : r), g'')
+
+initEmptyGameState :: (Random.RandomGen g) => Int -> g -> (GL.GameState, g)
+initEmptyGameState numPlayers g0 =
+  let shuffleCardsFor n g
+        | n >= 4 = shuffle GL.allCards g
+        | otherwise = shuffle GL.allCardsMinusStars g
+      (shuffledDeck, g1) = shuffleCardsFor numPlayers g0
+      (shuffledLums, g2) = shuffle GL.allLuminaries g1
+      (shuffledDirs, g3) = shuffle (GL.allEnum :: [GL.Direction]) g2
+  in 
+    ((GL.emptyGameState numPlayers (shuffledDirs Prelude.!! 0) shuffledDeck shuffledLums), g3)
