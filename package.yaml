@@ -46,6 +46,7 @@ dependencies:
 - lens-tutorial
 - string-random
 - more-containers
+- hedgehog
 # - transformers-either 
 
 default-extensions:
@@ -57,6 +58,7 @@ default-extensions:
 - FlexibleContexts
 - TupleSections
 - GeneralizedNewtypeDeriving
+- LambdaCase
 
 library:
   source-dirs: src
@@ -81,13 +83,13 @@ executables:
     dependencies:
     - illimat
 
-# tests:
-#   illimat-test:
-#     main:                Spec.hs
-#     source-dirs:         test
-#     ghc-options:
-#     - -threaded
-#     - -rtsopts
-#     - -with-rtsopts=-N
-#     dependencies:
-#     - illimat
+tests:
+  illimat-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - illimat
