@@ -47,6 +47,7 @@ dependencies:
 - string-random
 - more-containers
 - hedgehog
+- katip
 # - transformers-either 
 
 default-extensions:

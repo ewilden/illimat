@@ -28,7 +28,7 @@ initialState = State { stateAuths               = []
 type InMemory r m = (Has (TVar State) r, MonadReader r m, MonadIO m)
 
 addAuth
-  :: InMemory r m => D.Auth -> m (Either D.RegistrationError D.VerificationCode)
+  :: InMemory r m => D.Auth -> m (Either D.RegistrationError (D.UserId, D.VerificationCode))
 addAuth auth = do
   tvar <- asks getter
 
@@ -53,12 +53,16 @@ addAuth auth = do
           , stateUnverifiedUsernames = newUnverifieds 
           }
     lift $ writeTVar tvar newState
-    return vCode
+    return (newUserId, vCode)
+
+orThrow :: MonadError e m => Maybe a -> e -> m a
+orThrow Nothing e = throwError e
+orThrow (Just a) _ = return a
 
 setUsernameAsVerified
   :: InMemory r m
   => D.VerificationCode
-  -> m (Either D.UsernameVerificationError ())
+  -> m (Either D.UsernameVerificationError (D.UserId, D.Username))
 setUsernameAsVerified vcode = do
   tvar <- asks getter
   atomically . runExceptT $ do
@@ -74,7 +78,10 @@ setUsernameAsVerified vcode = do
             newState = state { stateUnverifiedUsernames = newUnverifieds
                              , stateVerifiedUsernames   = newVerifieds
                              }
+            mayUid = map fst . find ((username ==) . D.authUsername . snd) $ stateAuths $ newState
+        uid <- mayUid `orThrow` D.UsernameVerificationErrorInvalidCode
         lift $ writeTVar tvar newState
+        return (uid, username)
 
 findUserByAuth :: InMemory r m => D.Auth -> m (Maybe (D.UserId, Bool))
 findUserByAuth auth = do

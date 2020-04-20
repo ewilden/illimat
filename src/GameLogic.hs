@@ -900,23 +900,24 @@ score players = flip execState (map (const 0) players) $ do
     mostCardPlayers = indicesOfHighest cardCounts
     mostSummerPlayers = indicesOfHighest summerCounts
     mostWinterPlayers = indicesOfHighest winterCounts
-    tiebreakByLuminaries :: [PlayerIndex] -> Maybe PlayerIndex
-    tiebreakByLuminaries playerIndices = case playerIndices of
+    tiebreakByLuminaries :: Bool -> [PlayerIndex] -> Maybe PlayerIndex
+    tiebreakByLuminaries byFewest playerIndices = case playerIndices of
       [singleWinner] -> Just singleWinner
       multipleWinners -> do
         let lumTiebreakCounts = playerIndices
               & map (\i -> (i, forceLookup i luminaryCounts))
+              & map (\(i, count) -> if byFewest then (i, -count) else (i, count))
         case indicesOfHighest lumTiebreakCounts of
           [finalWinner] -> Just finalWinner
           _ -> Nothing
   -- award points for most cards
-  case (tiebreakByLuminaries mostCardPlayers) of
+  case (tiebreakByLuminaries False mostCardPlayers) of
     Just player -> givePointsTo 4 player
     Nothing -> return ()
-  case (tiebreakByLuminaries mostSummerPlayers) of
+  case (tiebreakByLuminaries False mostSummerPlayers) of
     Just player -> givePointsTo 2 player
     Nothing -> return ()
-  case (tiebreakByLuminaries mostWinterPlayers) of
+  case (tiebreakByLuminaries True mostWinterPlayers) of
     Just playerIndex ->
       if 
         any (== River) $ _playerLuminaries $ forceLookup playerIndex $ zip [0..] players

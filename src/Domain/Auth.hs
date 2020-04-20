@@ -33,6 +33,7 @@ where
 
 import           ClassyPrelude
 import           Control.Monad.Except
+import Katip
 
 type VerificationCode = Text
 
@@ -68,29 +69,34 @@ data Auth = Auth
  } deriving (Show, Eq)
 
 class Monad m => AuthRepo m where
-  addAuth :: Auth -> m (Either RegistrationError VerificationCode)
+  addAuth :: Auth -> m (Either RegistrationError (UserId, VerificationCode))
   findUserByAuth :: Auth -> m (Maybe UserId)
   findUsernameFromUserId :: UserId -> m (Maybe Username)
-  setUsernameAsVerified :: VerificationCode -> m (Either UsernameVerificationError ())
+  setUsernameAsVerified :: VerificationCode -> m (Either UsernameVerificationError (UserId, Username))
 
 getUser :: AuthRepo m => UserId -> m (Maybe Username)
 getUser = findUsernameFromUserId
 
 verifyUsername
   :: AuthRepo m => VerificationCode -> m (Either UsernameVerificationError ())
-verifyUsername = setUsernameAsVerified
+verifyUsername = ((const () <$>) <$>) . setUsernameAsVerified
 
 class Monad m => UsernameVerificationNotif m where
   notifyUsernameVerification :: Username -> VerificationCode -> m ()
 
+withUserIdContext :: (KatipContext m) => UserId -> m a -> m a
+withUserIdContext uId = katipAddContext (sl "userId" uId)
+
 register
-  :: (AuthRepo m, UsernameVerificationNotif m)
+  :: (KatipContext m, AuthRepo m, UsernameVerificationNotif m)
   => Auth
   -> m (Either RegistrationError ())
 register auth = runExceptT $ do
-  vCode <- ExceptT $ addAuth auth
+  (uid, vCode) <- ExceptT $ addAuth auth
   let username = authUsername auth
   lift $ notifyUsernameVerification username vCode
+  withUserIdContext uid $
+    $(logTM) InfoS $ ls (rawUsername username) <> " is registered successfully"
 
 type UserId = Int
 type SessionId = Text
@@ -105,10 +111,13 @@ class Monad m => SessionRepo m where
 resolveSessionId :: SessionRepo m => SessionId -> m (Maybe UserId)
 resolveSessionId = findUserIdBySessionId
 
-login :: (AuthRepo m, SessionRepo m) => Auth -> m (Either LoginError SessionId)
+login :: (KatipContext m, AuthRepo m, SessionRepo m) => Auth -> m (Either LoginError SessionId)
 login auth = runExceptT $ do
   result <- lift $ findUserByAuth auth
   case result of
     Nothing  -> throwError LoginErrorInvalidAuth
-    Just uId -> lift $ newSession uId
+    Just uId -> withUserIdContext uId . lift $ do
+      sId <- newSession uId
+      $(logTM) InfoS $ ls (rawUsername $ authUsername auth) <> " logged in successfully"
+      return sId
 
