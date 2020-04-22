@@ -48,7 +48,10 @@ dependencies:
 - more-containers
 - hedgehog
 - katip
-# - transformers-either 
+- postgresql-simple
+- resource-pool
+- time
+- postgresql-simple-migration
 
 default-extensions:
 - NoImplicitPrelude
