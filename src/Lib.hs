@@ -1,11 +1,13 @@
 module Lib where
 
 import ClassyPrelude
+import Control.Monad.Catch hiding (bracket)
 import Control.Monad.Fail
 import Katip
 
 import qualified Adapter.InMemory.Auth as M
 import qualified Adapter.InMemory.Game as G
+import qualified Adapter.PostgreSQL.Auth as PG
 import Domain.Auth
 import Domain.Game
 
@@ -24,10 +26,10 @@ instance GameRepo GameStack where
   getGameView = G.getGameView
   getGamesForUser = G.getGamesForUser
 
-type State = TVar M.State
+type State =  (PG.State, TVar M.State)
 newtype App a = App
   { unApp :: ReaderT State (KatipContextT IO) a
-  } deriving (Applicative, Functor, KatipContext, Katip, Monad, MonadReader State, MonadIO, MonadFail)
+  } deriving (Applicative, Functor, KatipContext, Katip, Monad, MonadReader State, MonadIO, MonadFail, MonadThrow)
 
 run :: LogEnv -> State -> App a -> IO a
 run le state 
@@ -36,10 +38,10 @@ run le state
   . unApp
 
 instance AuthRepo App where
-  addAuth = M.addAuth
-  setUsernameAsVerified = M.setUsernameAsVerified
-  findUserByAuth = ((fst <$>) <$>) . M.findUserByAuth
-  findUsernameFromUserId = M.findUsernameFromUserId
+  addAuth = PG.addAuth
+  setUsernameAsVerified = PG.setUsernameAsVerified
+  findUserByAuth = ((fst <$>) <$>) . PG.findUserByAuth
+  findUsernameFromUserId = PG.findUsernameFromUserId
 
 instance UsernameVerificationNotif App where
   notifyUsernameVerification = M.notifyUsernameVerification
@@ -50,8 +52,15 @@ instance SessionRepo App where
 
 someFunc :: IO ()
 someFunc = withKatip $ \le -> do
-  state <- newTVarIO M.initialState
-  run le state action
+  mState <- newTVarIO M.initialState
+  PG.withState pgCfg $ \pgState -> run le (pgState, mState) action
+  where
+    pgCfg = PG.Config
+            { PG.configUrl = "postgresql://localhost/hauth" 
+            , PG.configStripeCount = 2
+            , PG.configMaxOpenConnPerStripe = 5
+            , PG.configIdleConnTimeout = 10
+            }
 
 action :: App ()
 action = do

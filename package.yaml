@@ -52,6 +52,7 @@ dependencies:
 - resource-pool
 - time
 - postgresql-simple-migration
+- exceptions
 
 default-extensions:
 - NoImplicitPrelude
