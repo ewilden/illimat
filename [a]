@@ -1,0 +1,11 @@
+Data.List genericLength :: Num i => [a] -> i
+GHC.OldList genericLength :: Num i => [a] -> i
+Protolude genericLength :: Num i => [a] -> i
+RIO.List genericLength :: Num i => [a] -> i
+Universum.List.Reexport genericLength :: Num i => [a] -> i
+Relude.List.Reexport genericLength :: Num i => [a] -> i
+Rebase.Prelude genericLength :: Num i => [a] -> i
+Game.LambdaHack.Core.Prelude genericLength :: Num i => [a] -> i
+NumericPrelude.List.Generic lengthLeft :: (C n) => [a] -> n
+NumericPrelude.List.Generic lengthRight :: (C n) => [a] -> n
+-- plus more results not shown, pass --count=20 to see more

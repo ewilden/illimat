@@ -94,9 +94,9 @@ startGame (D.StartGameRequest uid gid) = do
                 let usersInGame = D._gamePlayers game
                 let mayPlayerIndex = uid `elemIndex` usersInGame
                 when (length usersInGame < 2) $ throwError StartGameErrorNotEnoughPlayers 
-                case mayPlayerIndex of
-                    Nothing -> throwError StartGameErrorNotInGame 
-                    Just 0 -> do
+                case (mayPlayerIndex, D._gameData game) of
+                    (Nothing, _) -> throwError StartGameErrorNotInGame 
+                    (Just 0, GameDataStarting _) -> do
                         let newGame = game
                                 { D._gameData = D.GameDataRunning $ D.RunningGame 
                                     { D._rgGameState = fst $ D.initEmptyGameState (length usersInGame) randgen     
@@ -107,8 +107,9 @@ startGame (D.StartGameRequest uid gid) = do
                                 }
                         lift $ writeTVar tvar newState
                         return $ D.StartGameResponse $ D.computeViewForPlayer 0 newGame
-                    Just _ -> throwError StartGameErrorNotGameOwner 
-
+                    (Just 0, GameDataRunning _) -> throwError StartGameErrorGameAlreadyStarted 
+                    (Just 0, GameDataFinished _) -> throwError StartGameErrorGameAlreadyStarted
+                    (Just _, _) -> throwError StartGameErrorNotGameOwner 
 
 makeMove :: InMemory r m => D.MakeMoveRequest -> m (Either D.MakeMoveError D.MakeMoveResponse)
 makeMove (D.MakeMoveRequest uid gid move) = do
@@ -140,3 +141,25 @@ makeMove (D.MakeMoveRequest uid gid move) = do
                     }
                   lift $ writeTVar tvar newState
                   return $ D.MakeMoveResponse $ D.computeViewForPlayer playerIndex newGame
+
+getGameView :: InMemory r m => D.GetGameViewRequest -> m (Either D.GetGameViewError D.GetGameViewResponse)
+getGameView (D.GetGameViewRequest uid gid) = do
+  tvar <- view gameRelatedStateL
+  state <- liftIO $ readTVarIO tvar
+  runExceptT $
+    case HM.lookup gid (_sGames state) of
+      Nothing -> throwError D.GetGameViewErrorNoSuchGame
+      Just game ->
+        case uid `elemIndex` (D._gamePlayers game) of
+          Nothing -> throwError D.GetGameViewErrorUserNotInGame
+          Just playerIndex -> return $ D.GetGameViewResponse $ D.computeViewForPlayer playerIndex game
+
+getGamesForUser :: InMemory r m => D.GetGamesForUserRequest -> m D.GetGamesForUserResponse
+getGamesForUser (D.GetGamesForUserRequest uid) = do
+  tvar <- view gameRelatedStateL
+  state <- liftIO $ readTVarIO tvar
+  return $ D.GetGamesForUserResponse 
+    $ map _gameId 
+    $ concat 
+    $ HM.lookup uid 
+    $ byUsers $ _sGames state
