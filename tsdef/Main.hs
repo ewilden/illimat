@@ -20,7 +20,6 @@ main = putStrLn $ formatTSDeclarations (
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.LuminaryStateView))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.Luminary))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.PlayerState))
-    <> (getTypeScriptDeclarations (Proxy :: Proxy GL.GameStateView))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.OtherPlayerView))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.WhoseTurn))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.RakeTurn))

@@ -8,7 +8,7 @@ import qualified Prelude ((!!))
 import Prelude (putStrLn, splitAt)
 import qualified RIO.Partial as Partial
 import           RIO.State
-import Data.Aeson.TH
+import Data.Aeson.TH ()
 import Data.Aeson.TypeScript.TH
 import           Data.Sort
 
@@ -176,8 +176,8 @@ data FieldState = FieldState
     } deriving (Show)
 
 data FieldStateView = FieldStateView
-  { _viewFieldCards :: ![CardStack]
-  , _viewFieldLuminary :: !LuminaryStateView
+  { _vfCards :: ![CardStack]
+  , _vfLuminary :: !LuminaryStateView
   } deriving (Show, Eq)
 
 computeFieldView :: FieldState -> FieldStateView
