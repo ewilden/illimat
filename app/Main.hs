@@ -19,6 +19,11 @@ main = do
                  <> short 'v'
                  <> help "Verbose output?"
                   )
+       <*> option auto ( long "port"
+                      <> short 'p'
+                      <> help "Which port to run the API on."
+                      <> value 3003
+                        )
     )
     empty
   lo <- logOptionsHandle stderr (optionsVerbose options)

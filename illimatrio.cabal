@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1080f871e6902dfdfa019f52c56deb4f71be4789a8ce5f82c5166c86b73e68c7
+-- hash: c370a8d9f6b88402a17d66b00f3e835aa2d1f2ae9eaf01ea324e24923764c83e
 
 name:           illimatrio
 version:        0.1.0.0
@@ -27,6 +27,9 @@ source-repository head
 
 library
   exposed-modules:
+      Adapter.InMemory.Game
+      Domain.Game
+      Domain.Game.GameLogic
       Import
       Run
       Types
@@ -39,7 +42,12 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.11 && <10
+    , mtl
+    , random
     , rio >=0.1.12.0
+    , scotty
+    , sort
+    , string-random
   default-language: Haskell2010
 
 executable illimatrio-exe

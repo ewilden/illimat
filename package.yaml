@@ -73,6 +73,12 @@ default-extensions:
 
 library:
   source-dirs: src
+  dependencies:
+    - mtl
+    - random
+    - scotty
+    - sort
+    - string-random
 
 executables:
   illimatrio-exe:
