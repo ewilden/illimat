@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Domain.Game.GameLogic where
 
 -- import           Prelude                        ( head )
@@ -6,7 +8,11 @@ import qualified Prelude ((!!))
 import Prelude (putStrLn, splitAt)
 import qualified RIO.Partial as Partial
 import           RIO.State
+import Data.Aeson.TH
+import Data.Aeson.TypeScript.TH
 import           Data.Sort
+
+import qualified AesonOptions
 
 -- loops around back to minBound
 succ :: (Bounded a, Eq a, Enum a) => a -> a
@@ -121,20 +127,20 @@ data PlayerState = PlayerState
     } deriving (Show, Eq)
 
 data OtherPlayerView = OtherPlayerView
-  { _viewOtherPlayerNumCardsInHand :: !Int
-  , _viewOtherPlayerNumOkuses :: !Int
-  , _viewOtherPlayerLuminaries :: ![Luminary]
-  , _viewOtherPlayerHarvestPileSize :: !Int
+  { _opNumCardsInHand :: !Int
+  , _opNumOkuses :: !Int
+  , _opLuminaries :: ![Luminary]
+  , _opHarvestPileSize :: !Int
       -- how many face down cards to show. Consider bucketing to reduce info
   } deriving (Show, Eq)
 
 computeOtherPlayerView :: PlayerState -> OtherPlayerView
 computeOtherPlayerView (PlayerState hand numOkuses lums harvestPile) =
   OtherPlayerView
-    { _viewOtherPlayerNumCardsInHand = length hand
-    , _viewOtherPlayerNumOkuses = numOkuses
-    , _viewOtherPlayerLuminaries = lums
-    , _viewOtherPlayerHarvestPileSize = (length harvestPile) `div` 4
+    { _opNumCardsInHand = length hand
+    , _opNumOkuses = numOkuses
+    , _opLuminaries = lums
+    , _opHarvestPileSize = (length harvestPile) `div` 4
     }
 
 data IllimatState = IllimatState
@@ -920,3 +926,19 @@ executeMove playerIndex move = case move of
   Harvest cards dir stacks -> harvest playerIndex cards dir stacks
   Sow card dir -> sow playerIndex card dir
   Stockpile card dir stacks desiredStackVal -> stockpile playerIndex card dir stacks desiredStackVal
+
+$(deriveJSONAndTypeScript AesonOptions.options ''IllimatState)
+$(deriveJSONAndTypeScript AesonOptions.options ''Direction)
+$(deriveJSONAndTypeScript AesonOptions.options ''BoardStateView)
+$(deriveJSONAndTypeScript AesonOptions.options ''FieldStateView)
+$(deriveJSONAndTypeScript AesonOptions.options ''CardStack)
+$(deriveJSONAndTypeScript AesonOptions.options ''Card)
+$(deriveJSONAndTypeScript AesonOptions.options ''CardVal)
+$(deriveJSONAndTypeScript AesonOptions.options ''CardSeason)
+$(deriveJSONAndTypeScript AesonOptions.options ''LuminaryStateView)
+$(deriveJSONAndTypeScript AesonOptions.options ''Luminary)
+$(deriveJSONAndTypeScript AesonOptions.options ''PlayerState)
+$(deriveJSONAndTypeScript AesonOptions.options ''GameStateView)
+$(deriveJSONAndTypeScript AesonOptions.options ''OtherPlayerView)
+$(deriveJSONAndTypeScript AesonOptions.options ''WhoseTurn)
+$(deriveJSONAndTypeScript AesonOptions.options ''RakeTurn)

@@ -39,5 +39,3 @@ instance Domain.Game.GameRepo (RIO App) where
   makeMove = Adapter.InMemory.Game.makeMove
   getGameView = Adapter.InMemory.Game.getGameView
   getGamesForUser = Adapter.InMemory.Game.getGamesForUser
-
-

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c370a8d9f6b88402a17d66b00f3e835aa2d1f2ae9eaf01ea324e24923764c83e
+-- hash: 58a5207669d1800750bdf18e6c70e07e38c020b6dea91c7d3144628fab67d7d1
 
 name:           illimatrio
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Adapter.InMemory.Game
+      AesonOptions
       Domain.Game
       Domain.Game.GameLogic
       Import
@@ -41,7 +42,9 @@ library
   default-extensions: BangPatterns BinaryLiterals ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DoAndIfThenElse EmptyDataDecls ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NamedFieldPuns NoImplicitPrelude OverloadedStrings PartialTypeSignatures PatternGuards PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeSynonymInstances ViewPatterns
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.11 && <10
+      aeson
+    , aeson-typescript
+    , base >=4.11 && <10
     , mtl
     , random
     , rio >=0.1.12.0
@@ -62,6 +65,22 @@ executable illimatrio-exe
       base >=4.11 && <10
     , illimatrio
     , optparse-simple
+    , rio >=0.1.12.0
+  default-language: Haskell2010
+
+executable tsdef
+  main-is: Main.hs
+  other-modules:
+      Paths_illimatrio
+  hs-source-dirs:
+      tsdef
+  default-extensions: BangPatterns BinaryLiterals ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DoAndIfThenElse EmptyDataDecls ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NamedFieldPuns NoImplicitPrelude OverloadedStrings PartialTypeSignatures PatternGuards PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeSynonymInstances ViewPatterns
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , aeson-typescript
+    , base >=4.11 && <10
+    , illimatrio
     , rio >=0.1.12.0
   default-language: Haskell2010
 

@@ -97,9 +97,13 @@ startGame (D.StartGameRequest uid gid) = do
                 case (mayPlayerIndex, D._gameData game) of
                     (Nothing, _) -> throwError StartGameErrorNotInGame 
                     (Just 0, GameDataStarting _) -> do
+                        let gsEmpty = fst $ D.initEmptyGameState (length usersInGame) randgen
+                        initialGameState <- (case mapLeft D.StartGameErrorOther $ snd <$> GL.runGS GL.doInitialGameSetup gsEmpty of
+                            Left err -> throwError err
+                            Right gs -> return gs)
                         let newGame = game
                                 { D._gameData = D.GameDataRunning $ D.RunningGame 
-                                    { D._rgGameState = fst $ D.initEmptyGameState (length usersInGame) randgen     
+                                    { D._rgGameState = initialGameState
                                     } 
                                 }
                             newState = state

@@ -89,6 +89,7 @@ data StartGameError
     | StartGameErrorNoSuchGame
     | StartGameErrorNotInGame
     | StartGameErrorGameAlreadyStarted
+    | StartGameErrorOther Text
     deriving (Show)
 
 data MakeMoveError
