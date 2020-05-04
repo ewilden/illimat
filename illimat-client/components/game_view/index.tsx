@@ -1,13 +1,13 @@
-import {Board} from '~/components/board';
+import { Board } from '~/components/board';
 
-export default function GameView({gameView} : {gameView: GameStateView}) {
+export default function GameView({ gameView }: { gameView: GameStateView }) {
     return (<div>
         <p>
             This is the game state view.
         </p>
         <div className="gameViewContainer">
             <p>Board:</p>
-            <Board boardState={gameView.boardState} />
+            <Board boardState={gameView.boardState} illimatState={gameView.illimatState} />
         </div>
     </div>);
 }

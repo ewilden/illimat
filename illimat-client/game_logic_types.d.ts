@@ -45,6 +45,8 @@ type CardVal = "Fool" | "Two" | "Three" | "Four" | "Five" | "Six" | "Seven" | "E
 
 type CardSeason = "CSummer" | "CSpring" | "CWinter" | "CAutumn" | "CStars";
 
+type Season = "Summer" | "Spring" | "Winter" | "Autumn";
+
 type LuminaryStateView = IFaceUpView | IFaceDownView | INoLuminaryView;
 
 interface IFaceUpView {

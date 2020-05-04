@@ -1,14 +1,14 @@
 module Main where
 
-import Prelude (putStrLn)
-import RIO
-import Data.Proxy ()
-import Data.Aeson.TypeScript.TH
-import qualified Domain.Game.GameLogic as GL
+import           Prelude                        ( putStrLn )
+import           RIO
+import           Data.Proxy                     ( )
+import           Data.Aeson.TypeScript.TH
+import qualified Domain.Game.GameLogic         as GL
 
 main :: IO ()
-main = putStrLn $ formatTSDeclarations (
-    (getTypeScriptDeclarations (Proxy :: Proxy GL.GameStateView))
+main = putStrLn $ formatTSDeclarations
+    (  (getTypeScriptDeclarations (Proxy :: Proxy GL.GameStateView))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.IllimatState))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.Direction))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.BoardStateView))
@@ -17,6 +17,7 @@ main = putStrLn $ formatTSDeclarations (
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.Card))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.CardVal))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.CardSeason))
+    <> (getTypeScriptDeclarations (Proxy :: Proxy GL.Season))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.LuminaryStateView))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.Luminary))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.PlayerState))
