@@ -40,3 +40,6 @@ export function cardToString(card: Card): string {
 export function cardStackToString(cardStack: CardStack) {
   return `CardStack(${cardStack[0].map(String).join(',')}|${cardStack[1].map(String).join(',')})`;
 }
+
+export type MoveType = "Harvest" | "Sow" | "Stockpile";
+export const moveTypes: MoveType[] = ["Harvest", "Stockpile", "Sow"];

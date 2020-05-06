@@ -29,18 +29,20 @@ export function HandCard({ card, ...rest }: { card: Card }) {
 }
 
 const cardClasses = {
-    selected: "w-20 border-solid border-4 border-yellow-400 rounded text-center",
-    notSelected: "w-20 border-solid border-2 border-gray-800 rounded text-center",
+    selected: " border-4 border-yellow-400 bg-yellow-200 ",
+    notSelected: " border-2 border-gray-800 hover:bg-yellow-100 ",
+    always: " w-20 border border-solid rounded text-center "
 };
 
-export function FieldCard({ card, isSelected, onClick }: { card: Card, isSelected: boolean, onClick?: (e: any) => void }) {
+export function FieldCard({ card, isSelected, onClick }: { card: Card, isSelected?: boolean, onClick?: (e: any) => void }) {
     const [val, season] = card;
     return (
-        <div className={isSelected ? cardClasses.selected : cardClasses.notSelected} onClick={onClick}>
+        <button className={`${isSelected ? cardClasses.selected : cardClasses.notSelected} ${cardClasses.always}`}
+            onClick={onClick} tabIndex={onClick ? 0 : -1}>
             <p>{val}</p>
             <p className="text-2xl">{renderSeason(season)}</p>
             <p>{season.substring(1)}</p>
-        </div>
+        </button>
     );
 }
 
@@ -50,7 +52,7 @@ const selectIsMyStackSelected = createSelector(
     (selectedCardStacks, myCardStack) => Boolean(selectedCardStacks[cardStackToString(myCardStack)])
 );
 
-const classesForIsSelected = " border-solid border-4 border-yellow-400 ";
+const classesForIsSelected = " border-solid border-4 border-yellow-400 bg-yellow-200 ";
 
 export function RenderCardStack({ cardStack }: { cardStack: CardStack }) {
     const [possibleValues, cards] = cardStack;
@@ -62,6 +64,7 @@ export function RenderCardStack({ cardStack }: { cardStack: CardStack }) {
     } else if (cards.length === 1) {
         return (
             <div className={isMyStackSelected ? classesForIsSelected : ""}
+                tabIndex={0}
                 onClick={() => {
                     if (!isMyStackSelected) {
                         dispatch(selectCardStack({ cardStack }));
@@ -76,7 +79,9 @@ export function RenderCardStack({ cardStack }: { cardStack: CardStack }) {
         );
     } else {
         return (
-            <div className={isMyStackSelected ? classesForIsSelected : "border-dotted border-2 border-gray-400"}>
+            <div className={isMyStackSelected ? classesForIsSelected : "border-dotted border-2 border-gray-400"}
+                tabIndex={0}
+            >
                 <p>[{possibleValues.join(", ")}]</p>
                 <div className="flex flex-col space-y-px">
                     {cards.map(card => (

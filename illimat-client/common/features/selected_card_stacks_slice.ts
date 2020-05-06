@@ -5,12 +5,12 @@ const selectedCardStacksSlice = createSlice({
     name: 'selectedCardStacks',
     initialState: {} as { [stackKey: string]: CardStack },
     reducers: {
-        selectCardStack(state, action) {
-            const { cardStack }: { cardStack: CardStack } = action.payload;
+        selectCardStack(state, action: { payload: { cardStack: CardStack } }) {
+            const { cardStack } = action.payload;
             state[cardStackToString(cardStack)] = cardStack;
         },
-        deselectCardStack(state, action) {
-            const { cardStack }: { cardStack: CardStack } = action.payload;
+        deselectCardStack(state, action: { payload: { cardStack: CardStack } }) {
+            const { cardStack } = action.payload;
             delete state[cardStackToString(cardStack)];
         },
     }
