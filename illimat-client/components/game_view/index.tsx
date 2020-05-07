@@ -1,11 +1,11 @@
 import { Board } from '~/components/board';
 import { MyHand } from '../hand';
-import { moveTypes } from '~/common/game_logic';
+import { moveTypes, cardToString, MoveType } from '~/common/game_logic';
 import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '~/common/reducers';
 import { selectMoveType } from '~/common/features/selected_move_slice';
-import { FieldCard } from '../card';
+import { FieldCard, RenderCardStack } from '../card';
 
 const moveButtonClasses = {
     always: " m-1 border border-solid border-1 border-indigo-300 bg-indigo-100 py-2 px-4 rounded ",
@@ -15,8 +15,50 @@ const moveButtonClasses = {
 
 const selectSelectedMove = createSelector((state: RootState) => state.selectedMoveType, x => x);
 const selectSelectedCards = createSelector((state: RootState) => state.selectedCards,
-    selectedCardsObj => [...Object.keys(selectedCardsObj)].map(x => selectedCardsObj[x])
+    selectedCardsObj => Object.values(selectedCardsObj)
 );
+const selectSelectedCardStacks = createSelector((state: RootState) => state.selectedCardStacks,
+    selectedStacksObj => Object.values(selectedStacksObj)
+);
+
+function canTargetFieldCards(moveType: MoveType): boolean {
+    return ['Harvest', 'Stockpile'].includes(moveType);
+}
+
+function YourCurrentMove() {
+    const dispatch = useDispatch();
+    const selectedMoveType = useSelector(selectSelectedMove);
+    const selectedCards = useSelector(selectSelectedCards);
+    const selectedStacks = useSelector(selectSelectedCardStacks);
+
+    return (selectedMoveType ?
+        <div className="mt-4">
+            <p>Your pending move:</p>
+            <h3 className="text-lg">{selectedMoveType}</h3>
+            {selectedCards.length > 0 && (
+                <>
+                    <p>
+                        using cards from your hand:{' '}
+                    </p>
+                    <div>
+                        {selectedCards.map(card => <FieldCard card={card} key={cardToString(card)} />)}
+                    </div>
+                </>
+            )}
+            {canTargetFieldCards(selectedMoveType) && selectedStacks.length > 0 && (
+                <>
+                    <p>using cards from the field:{' '}
+                    </p>
+                    <div>
+                        {selectedStacks.map(cardStack => <div className="inline-block">
+                            <RenderCardStack cardStack={cardStack} disableHighlighting={true} />
+                        </div>)}
+                    </div>
+                </>
+            )}
+        </div> : <></>
+    );
+}
 
 export default function GameView({ gameStateView }: { gameStateView: GameStateView }) {
     const dispatch = useDispatch();
@@ -51,13 +93,7 @@ export default function GameView({ gameStateView }: { gameStateView: GameStateVi
                         ))}
                     </ul>
                     {selectedMoveType && (
-                        <div className="mt-4">
-                            <p>Your pending move:</p>
-                            <h3 className="text-lg">{selectedMoveType}</h3>
-                            <p>using cards from your hand:{' '}
-                                {selectedCards.map(card => <FieldCard card={card} />)}
-                            </p>
-                        </div>
+                        <YourCurrentMove />
                     )}
                 </div>
             </div>

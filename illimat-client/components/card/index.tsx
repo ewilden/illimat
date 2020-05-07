@@ -54,16 +54,17 @@ const selectIsMyStackSelected = createSelector(
 
 const classesForIsSelected = " border-solid border-4 border-yellow-400 bg-yellow-200 ";
 
-export function RenderCardStack({ cardStack }: { cardStack: CardStack }) {
+export function RenderCardStack({ cardStack, disableHighlighting }: { cardStack: CardStack, disableHighlighting?: true }) {
     const [possibleValues, cards] = cardStack;
     const isMyStackSelected = useSelector((state: RootState) => selectIsMyStackSelected(state, cardStack));
+    const shouldHighlight = !disableHighlighting && isMyStackSelected;
     const dispatch = useDispatch();
 
     if (cards.length < 1) {
         throw new Error("impossible");
     } else if (cards.length === 1) {
         return (
-            <div className={isMyStackSelected ? classesForIsSelected : ""}
+            <div className={shouldHighlight ? classesForIsSelected : ""}
                 tabIndex={0}
                 onClick={() => {
                     if (!isMyStackSelected) {
@@ -79,7 +80,7 @@ export function RenderCardStack({ cardStack }: { cardStack: CardStack }) {
         );
     } else {
         return (
-            <div className={isMyStackSelected ? classesForIsSelected : "border-dotted border-2 border-gray-400"}
+            <div className={shouldHighlight ? classesForIsSelected : "border-dotted border-2 border-gray-400"}
                 tabIndex={0}
             >
                 <p>[{possibleValues.join(", ")}]</p>
