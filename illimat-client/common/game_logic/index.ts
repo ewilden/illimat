@@ -43,3 +43,12 @@ export function cardStackToString(cardStack: CardStack) {
 
 export type MoveType = "Harvest" | "Sow" | "Stockpile";
 export const moveTypes: MoveType[] = ["Harvest", "Stockpile", "Sow"];
+
+export function longDirection(dir: Direction): string {
+  return match(dir, {
+    N: () => "North",
+    S: () => "South",
+    E: () => "East",
+    W: () => "West"
+  });
+}

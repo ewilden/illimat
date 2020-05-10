@@ -1,13 +1,14 @@
 module Domain.Game where
 
 import           RIO
-import qualified System.Random as Random
+import qualified System.Random                 as Random
 
-import qualified Domain.Game.GameLogic as GL
-import qualified Prelude ((!!))
+import qualified Domain.Game.GameLogic         as GL
+import qualified Domain.User                   as U
+import qualified Prelude                        ( (!!) )
 
 type GameId = Text
-type UserId = Text
+type UserId = U.UserId
 
 data Game = Game
   { _gameId :: !GameId
@@ -27,11 +28,11 @@ data GameView = GameView
 
 computeViewForPlayer :: GL.PlayerIndex -> Game -> GameView
 computeViewForPlayer playerIndex (Game gid gameData players) =
-  GameView $ case gameData of
-    GameDataStarting g -> GameViewStarting g
-    GameDataFinished g -> GameViewFinished g
-    GameDataRunning (RunningGame gameState) ->
-      GameViewRunning $ GL.computeViewForPlayer playerIndex gameState
+    GameView $ case gameData of
+        GameDataStarting g -> GameViewStarting g
+        GameDataFinished g -> GameViewFinished g
+        GameDataRunning (RunningGame gameState) ->
+            GameViewRunning $ GL.computeViewForPlayer playerIndex gameState
 
 data GameViewData
   = GameViewRunning GL.GameStateView
@@ -83,7 +84,7 @@ data StartGameResponse = StartGameResponse
     { _sgrespGameView :: !GameView
     } deriving (Show)
 
-data StartGameError 
+data StartGameError
     = StartGameErrorNotGameOwner
     | StartGameErrorNotEnoughPlayers
     | StartGameErrorNoSuchGame
@@ -141,20 +142,23 @@ class Monad m => GameRepo m where
   getGamesForUser :: GetGamesForUserRequest -> m GetGamesForUserResponse
 
 shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
-shuffle x g = if length x < 2 then (x, g) else
-  let
-    (i, g') = Random.randomR (0, length(x) - 1) g
-    (r, g'') = shuffle (take i x ++ drop (i+1) x) g'
-  in
-    (x Prelude.!! i : r, g'')
+shuffle x g = if length x < 2
+    then (x, g)
+    else
+        let (i, g' ) = Random.randomR (0, length (x) - 1) g
+            (r, g'') = shuffle (take i x ++ drop (i + 1) x) g'
+        in  (x Prelude.!! i : r, g'')
 
 initEmptyGameState :: (Random.RandomGen g) => Int -> g -> (GL.GameState, g)
 initEmptyGameState numPlayers g0 =
-  let shuffleCardsFor n g
-        | n >= 4 = shuffle GL.allCards g
-        | otherwise = shuffle GL.allCardsMinusStars g
-      (shuffledDeck, g1) = shuffleCardsFor numPlayers g0
-      (shuffledLums, g2) = shuffle GL.allLuminaries g1
-      (shuffledDirs, g3) = shuffle (GL.allEnum :: [GL.Direction]) g2
-  in
-    (GL.emptyGameState numPlayers (shuffledDirs Prelude.!! 0) shuffledDeck shuffledLums, g3)
+    let shuffleCardsFor n g | n >= 4    = shuffle GL.allCards g
+                            | otherwise = shuffle GL.allCardsMinusStars g
+        (shuffledDeck, g1) = shuffleCardsFor numPlayers g0
+        (shuffledLums, g2) = shuffle GL.allLuminaries g1
+        (shuffledDirs, g3) = shuffle (GL.allEnum :: [GL.Direction]) g2
+    in  ( GL.emptyGameState numPlayers
+                            (shuffledDirs Prelude.!! 0)
+                            shuffledDeck
+                            shuffledLums
+        , g3
+        )

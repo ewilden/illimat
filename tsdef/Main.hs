@@ -24,4 +24,5 @@ main = putStrLn $ formatTSDeclarations
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.OtherPlayerView))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.WhoseTurn))
     <> (getTypeScriptDeclarations (Proxy :: Proxy GL.RakeTurn))
+    <> (getTypeScriptDeclarations (Proxy :: Proxy GL.Move))
     )

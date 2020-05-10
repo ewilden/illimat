@@ -1,4 +1,5 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, Dispatch } from '@reduxjs/toolkit';
+import axios from 'axios';
 
 const gameStateView = createSlice({
     name: 'gameStateView',
@@ -10,6 +11,12 @@ const gameStateView = createSlice({
         },
     }
 });
+
+
+
+const commitMove = ({ move }: { move: Move }) => async (dispatch: Dispatch) => {
+    const response = await axios.get('/api/move');
+};
 
 export const { setGameStateView } = gameStateView.actions;
 export default gameStateView.reducer;

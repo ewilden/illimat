@@ -26,16 +26,16 @@ export function Board(props: Props) {
         <div className="boardContainer">
             <div className="grid grid-rows-3 grid-cols-3 text-center">
                 <div className={`cellN ${commonFieldClasses}`}>
-                    <Field field={fieldN} />
+                    <Field field={fieldN} direction="N" />
                 </div>
                 <div className={`cellW ${commonFieldClasses}`}>
-                    <Field field={fieldW} />
+                    <Field field={fieldW} direction="W" />
                 </div>
                 <div className={`cellE ${commonFieldClasses}`}>
-                    <Field field={fieldE} />
+                    <Field field={fieldE} direction="E" />
                 </div>
                 <div className={`cellS ${commonFieldClasses}`}>
-                    <Field field={fieldS} />
+                    <Field field={fieldS} direction="S" />
                 </div>
                 <div className="cellCenter">
                     <div className="grid grid-rows-3 grid-cols-3 text-center h-full">

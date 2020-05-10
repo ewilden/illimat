@@ -30,7 +30,7 @@ resolver: lts-15.3
 #   - auto-update
 #   - wai
 packages:
-- .
+  - .
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
@@ -42,9 +42,8 @@ packages:
 #
 # extra-deps: []
 extra-deps:
-- aeson-typescript-0.2.0.0@sha256:d4bd016c04612bd6cbc02e3e38315de3bbf4f50c408f720b4472928b6ac4b59f,2642
-- string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
-
+  - aeson-typescript-0.2.0.0@sha256:d4bd016c04612bd6cbc02e3e38315de3bbf4f50c408f720b4472928b6ac4b59f,2642
+  - string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

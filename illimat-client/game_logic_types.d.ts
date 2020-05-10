@@ -87,3 +87,20 @@ type WhoseTurn = IWhoseTurn;
 type IWhoseTurn = [number, RakeTurn];
 
 type RakeTurn = "NoRake" | "RakeBoth" | "RakeSow" | "RakeOtherMove";
+
+type Move = IHarvest | ISow | IStockpile;
+
+interface IHarvest {
+  tag: "Harvest";
+  contents: [Card[], Direction, CardStack[]];
+}
+
+interface ISow {
+  tag: "Sow";
+  contents: [Card, Direction];
+}
+
+interface IStockpile {
+  tag: "Stockpile";
+  contents: [Card, Direction, CardStack[], number];
+}

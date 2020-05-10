@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 58a5207669d1800750bdf18e6c70e07e38c020b6dea91c7d3144628fab67d7d1
+-- hash: 5f0ab212cc4a26bd4af634bf93ca6e75b919c1cd66c1cd43463ddec2c2b4f357
 
 name:           illimatrio
 version:        0.1.0.0
@@ -28,9 +28,11 @@ source-repository head
 library
   exposed-modules:
       Adapter.InMemory.Game
+      Adapter.InMemory.User
       AesonOptions
       Domain.Game
       Domain.Game.GameLogic
+      Domain.User
       Import
       Run
       Types
@@ -45,12 +47,14 @@ library
       aeson
     , aeson-typescript
     , base >=4.11 && <10
+    , base64-bytestring
     , mtl
     , random
     , rio >=0.1.12.0
     , scotty
     , sort
     , string-random
+    , triplesec
   default-language: Haskell2010
 
 executable illimatrio-exe
