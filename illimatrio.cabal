@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5f0ab212cc4a26bd4af634bf93ca6e75b919c1cd66c1cd43463ddec2c2b4f357
+-- hash: 231da1002a961e93f519ce277c45a60bb800aea8df17efc5b96a0ff173368956
 
 name:           illimatrio
 version:        0.1.0.0
@@ -48,12 +48,15 @@ library
     , aeson-typescript
     , base >=4.11 && <10
     , base64-bytestring
+    , cookie
     , mtl
     , random
     , rio >=0.1.12.0
     , scotty
+    , scotty-cookie
     , sort
     , string-random
+    , time
     , triplesec
   default-language: Haskell2010
 

@@ -77,11 +77,14 @@ library:
     - aeson
     - aeson-typescript
     - base64-bytestring
+    - cookie
     - mtl
     - random
     - scotty
+    - scotty-cookie
     - sort
     - string-random
+    - time
     - triplesec
 
 executables:

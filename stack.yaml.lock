@@ -12,6 +12,13 @@ packages:
   original:
     hackage: aeson-typescript-0.2.0.0@sha256:d4bd016c04612bd6cbc02e3e38315de3bbf4f50c408f720b4472928b6ac4b59f,2642
 - completed:
+    hackage: scotty-cookie-0.1.0.3@sha256:3ff1df13a5acba8ba170a5ac22b3ac6a2c227791292536ce1ebfc41038f58fc9,1204
+    pantry-tree:
+      size: 222
+      sha256: 8236b9d3e3c01b29c3d7bf7791af8c87e87ea9b2052e9d7bc32038f524242679
+  original:
+    hackage: scotty-cookie-0.1.0.3@sha256:3ff1df13a5acba8ba170a5ac22b3ac6a2c227791292536ce1ebfc41038f58fc9,1204
+- completed:
     hackage: string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
     pantry-tree:
       size: 489

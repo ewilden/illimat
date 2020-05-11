@@ -3,9 +3,15 @@
 -- case.
 module Util
   ( plus2
-  ) where
+  , (|>)
+  )
+where
 
-import RIO
+import           RIO
+
+infixl 0 |>
+(|>) :: a -> (a -> b) -> b
+x |> f = f x
 
 plus2 :: Int -> Int
 plus2 = (+ 2)

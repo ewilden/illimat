@@ -2,7 +2,7 @@ module Domain.User where
 
 import           RIO
 
-type UserId = ByteString
+type UserId = Text
 
 class Monad m => UserRepo m where
     createUserId :: m UserId

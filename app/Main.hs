@@ -18,9 +18,9 @@ mkApp = do
   lo <- logOptionsHandle stderr (optionsVerbose options)
   pc <- mkDefaultProcessContext
   tvar <- newTVarIO Adapter.InMemory.Game.initialState
-  (lf, destructor) <- newLogFunc lo
-  return $ App {
-    , appLogFunc = lf
+  (lf, destructor :: IO ()) <- newLogFunc lo
+  return $ App 
+    { appLogFunc = lf
     , appProcessContext = pc
     , appOptions = options
     , appGameRelatedState = tvar
