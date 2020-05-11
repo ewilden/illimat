@@ -16,11 +16,11 @@ import qualified Domain.User                   as U
 type GameId = Text
 type UserId = U.UserId
 
-data Game = Game
-  { _gameId :: !GameId
-  , _gameData :: !GameData
-  , _gamePlayers :: ![UserId]
-  } deriving (Show)
+
+data FinishedGame
+  = FinishedGame
+  deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''FinishedGame)
 
 data GameData
   = GameDataRunning RunningGame
@@ -28,9 +28,30 @@ data GameData
   | GameDataFinished FinishedGame
   deriving (Show)
 
+data Game = Game
+  { _gameId :: !GameId
+  , _gameData :: !GameData
+  , _gamePlayers :: ![UserId]
+  } deriving (Show)
+
+data RunningGame = RunningGame
+  { _rgGameState :: !GL.GameState
+  } deriving (Show)
+
+data StartingGame = StartingGame deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''StartingGame)
+
+data GameViewData
+  = GameViewRunning GL.GameStateView
+  | GameViewStarting StartingGame
+  | GameViewFinished FinishedGame
+  deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''GameViewData)
+
 data GameView = GameView
   { _gvData :: !GameViewData
   } deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''GameView)
 
 computeViewForPlayer :: GL.PlayerIndex -> Game -> GameView
 computeViewForPlayer playerIndex (Game gid gameData players) =
@@ -39,22 +60,6 @@ computeViewForPlayer playerIndex (Game gid gameData players) =
     GameDataFinished g -> GameViewFinished g
     GameDataRunning (RunningGame gameState) ->
       GameViewRunning $ GL.computeViewForPlayer playerIndex gameState
-
-data GameViewData
-  = GameViewRunning GL.GameStateView
-  | GameViewStarting StartingGame
-  | GameViewFinished FinishedGame
-  deriving (Show, Eq)
-
-data RunningGame = RunningGame
-  { _rgGameState :: !GL.GameState
-  } deriving (Show)
-
-data StartingGame = StartingGame deriving (Show, Eq)
-
-data FinishedGame
-  = FinishedGame
-  deriving (Show, Eq)
 
 data CreateGameRequest = CreateGameRequest
   { _cgreqGameOwner :: !UserId
