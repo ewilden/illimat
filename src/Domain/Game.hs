@@ -78,6 +78,7 @@ data JoinGameError
   | JoinGameErrorGameAlreadyRunning
   | JoinGameErrorGameAlreadyFinished
   deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''JoinGameError)
 
 data JoinGameRequest = JoinGameRequest
   { _jgreqUserId :: !UserId
@@ -87,6 +88,7 @@ data JoinGameRequest = JoinGameRequest
 data JoinGameResponse = JoinGameResponse
   { _jgrespGameView :: !GameView
   } deriving (Show)
+$(deriveJSONAndTypeScript AesonOptions.options ''JoinGameResponse)
 
 data StartGameRequest = StartGameRequest
     { _sgreqUserId :: !UserId
@@ -96,6 +98,7 @@ data StartGameRequest = StartGameRequest
 data StartGameResponse = StartGameResponse
     { _sgrespGameView :: !GameView
     } deriving (Show)
+$(deriveJSONAndTypeScript AesonOptions.options ''StartGameResponse)
 
 data StartGameError
     = StartGameErrorNotGameOwner
@@ -105,6 +108,7 @@ data StartGameError
     | StartGameErrorGameAlreadyStarted
     | StartGameErrorOther Text
     deriving (Show)
+$(deriveJSONAndTypeScript AesonOptions.options ''StartGameError)
 
 data MakeMoveError
   = MakeMoveErrorInvalidMove Text
@@ -113,6 +117,7 @@ data MakeMoveError
   | MakeMoveErrorGameNotStartedYet
   | MakeMoveErrorGameAlreadyFinished
   deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''MakeMoveError)
 
 data MakeMoveRequest = MakeMoveRequest
   { _mmreqUserId :: !UserId
@@ -123,6 +128,7 @@ data MakeMoveRequest = MakeMoveRequest
 data MakeMoveResponse = MakeMoveResponse
   { _mmrespGameStateView :: !GameView
   } deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''MakeMoveResponse)
 
 data GetGameViewRequest = GetGameViewRequest
   { _ggvreqUserId :: !UserId
@@ -132,11 +138,13 @@ data GetGameViewRequest = GetGameViewRequest
 data GetGameViewResponse = GetGameViewResponse
   { _ggvrespGameView :: !GameView
   } deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''GetGameViewResponse)
 
 data GetGameViewError
   = GetGameViewErrorNoSuchGame
   | GetGameViewErrorUserNotInGame
   deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''GetGameViewError)
 
 data GetGamesForUserRequest = GetGamesForUserRequest
   { _ggfureqUserId :: !UserId
@@ -145,6 +153,7 @@ data GetGamesForUserRequest = GetGamesForUserRequest
 data GetGamesForUserResponse = GetGamesForUserResponse
   { _ggfurespGameIds :: ![GameId]
   } deriving (Show, Eq)
+$(deriveJSONAndTypeScript AesonOptions.options ''GetGamesForUserResponse)
 
 class Monad m => GameRepo m where
   createGame :: CreateGameRequest -> m CreateGameResponse

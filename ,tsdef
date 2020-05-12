@@ -1,0 +1,1 @@
+stack run tsdef > illimat-client/game_logic_types.d.ts

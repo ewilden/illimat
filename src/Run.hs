@@ -5,6 +5,7 @@ module Run
   )
 where
 
+import qualified Data.Aeson
 import qualified Data.Time                     as Time
 import qualified RIO.Text.Lazy                 as TL
 import qualified System.Random                 as Random
@@ -62,6 +63,31 @@ routes = do
   post "/creategame" $ do
     uid  <- getOrSetUserCookie
     resp <- lift $ D.createGame $ D.CreateGameRequest uid
+    json resp
+  post "/joingame/:gid" $ do
+    uid  <- getOrSetUserCookie
+    gid  <- param "gid"
+    resp <- lift $ D.joinGame $ D.JoinGameRequest uid gid
+    json resp
+  post "/startgame/:gid" $ do
+    uid  <- getOrSetUserCookie
+    gid  <- param "gid"
+    resp <- lift $ D.startGame $ D.StartGameRequest uid gid
+    json resp
+  post "/makemove/:gid" $ do
+    uid               <- getOrSetUserCookie
+    gid               <- param "gid"
+    (move :: GL.Move) <- jsonData
+    resp              <- lift $ D.makeMove $ D.MakeMoveRequest uid gid move
+    json resp
+  post "/viewgame/:gid" $ do
+    uid  <- getOrSetUserCookie
+    gid  <- param "gid"
+    resp <- lift $ D.getGameView $ D.GetGameViewRequest uid gid
+    json resp
+  post "/listgames" $ do
+    uid  <- getOrSetUserCookie
+    resp <- lift $ D.getGamesForUser $ D.GetGamesForUserRequest uid
     json resp
   get "/sample" $ do
     gs <- createTestInitializedGameState 4

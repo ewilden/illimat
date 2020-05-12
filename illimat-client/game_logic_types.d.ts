@@ -104,3 +104,41 @@ interface IStockpile {
   tag: "Stockpile";
   contents: [Card, Direction, CardStack[], number];
 }
+
+type FinishedGame = IFinishedGame;
+
+type IFinishedGame = void[];
+
+type StartingGame = IStartingGame;
+
+type IStartingGame = void[];
+
+type GameViewData = IGameViewRunning | IGameViewStarting | IGameViewFinished;
+
+interface IGameViewRunning {
+  tag: "GameViewRunning";
+  contents: GameStateView;
+}
+
+interface IGameViewStarting {
+  tag: "GameViewStarting";
+  contents: StartingGame;
+}
+
+interface IGameViewFinished {
+  tag: "GameViewFinished";
+  contents: FinishedGame;
+}
+
+type GameView = IGameView;
+
+interface IGameView {
+  data: GameViewData;
+}
+
+type CreateGameResponse = ICreateGameResponse;
+
+interface ICreateGameResponse {
+  gameView: GameView;
+  gameId: string;
+}
