@@ -142,3 +142,87 @@ interface ICreateGameResponse {
   gameView: GameView;
   gameId: string;
 }
+
+type JoinGameResponse = IJoinGameResponse;
+
+interface IJoinGameResponse {
+  gameView: GameView;
+}
+
+type StartGameResponse = IStartGameResponse;
+
+interface IStartGameResponse {
+  gameView: GameView;
+}
+
+type JoinGameError = "JoinGameErrorAlreadyInGame" | "JoinGameErrorNoSuchGame" | "JoinGameErrorGameAlreadyRunning" | "JoinGameErrorGameAlreadyFinished";
+
+type StartGameError = IStartGameErrorNotGameOwner | IStartGameErrorNotEnoughPlayers | IStartGameErrorNoSuchGame | IStartGameErrorNotInGame | IStartGameErrorGameAlreadyStarted | IStartGameErrorOther;
+
+interface IStartGameErrorNotGameOwner {
+  tag: "StartGameErrorNotGameOwner";
+}
+
+interface IStartGameErrorNotEnoughPlayers {
+  tag: "StartGameErrorNotEnoughPlayers";
+}
+
+interface IStartGameErrorNoSuchGame {
+  tag: "StartGameErrorNoSuchGame";
+}
+
+interface IStartGameErrorNotInGame {
+  tag: "StartGameErrorNotInGame";
+}
+
+interface IStartGameErrorGameAlreadyStarted {
+  tag: "StartGameErrorGameAlreadyStarted";
+}
+
+interface IStartGameErrorOther {
+  tag: "StartGameErrorOther";
+  contents: string;
+}
+
+type MakeMoveError = IMakeMoveErrorInvalidMove | IMakeMoveErrorNoSuchGame | IMakeMoveErrorPlayerNotInGame | IMakeMoveErrorGameNotStartedYet | IMakeMoveErrorGameAlreadyFinished;
+
+interface IMakeMoveErrorInvalidMove {
+  tag: "MakeMoveErrorInvalidMove";
+  contents: string;
+}
+
+interface IMakeMoveErrorNoSuchGame {
+  tag: "MakeMoveErrorNoSuchGame";
+}
+
+interface IMakeMoveErrorPlayerNotInGame {
+  tag: "MakeMoveErrorPlayerNotInGame";
+}
+
+interface IMakeMoveErrorGameNotStartedYet {
+  tag: "MakeMoveErrorGameNotStartedYet";
+}
+
+interface IMakeMoveErrorGameAlreadyFinished {
+  tag: "MakeMoveErrorGameAlreadyFinished";
+}
+
+type MakeMoveResponse = IMakeMoveResponse;
+
+interface IMakeMoveResponse {
+  gameStateView: GameView;
+}
+
+type GetGameViewResponse = IGetGameViewResponse;
+
+interface IGetGameViewResponse {
+  gameView: GameView;
+}
+
+type GetGameViewError = "GetGameViewErrorNoSuchGame" | "GetGameViewErrorUserNotInGame";
+
+type GetGamesForUserResponse = IGetGamesForUserResponse;
+
+interface IGetGamesForUserResponse {
+  gameIds: string[];
+}

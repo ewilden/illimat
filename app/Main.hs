@@ -43,7 +43,7 @@ main = do
                       <> help "Which port to run the API on."
                       <> value 3003
                         )
-       <*> option auto ( long "userCipherKey"
+       <*> strOption ( long "userCipherKey"
                       <> short 'k'
                       <> help "What password to use to validate UserIds."
                       )

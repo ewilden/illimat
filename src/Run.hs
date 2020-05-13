@@ -30,21 +30,32 @@ type AppScotty a = ScottyT TL.Text (RIO App) a
 type AppAction a = ActionT TL.Text (RIO App) a
 
 userIdCookieName :: Text
-userIdCookieName = "UserId"
+userIdCookieName = "USER_ID"
 
-getOrSetUserCookie :: AppAction DU.UserId
-getOrSetUserCookie = do
-  mayUid <- SC.getCookie userIdCookieName
-  case mayUid of
-    Just uid -> return uid
-    Nothing  -> do
-      uid                   <- lift DU.createUserId
-      Time.UTCTime day time <- liftIO Time.getCurrentTime
-      let expTime = Time.UTCTime (Time.addDays 2000 day) time
-      let cookie = (SC.makeSimpleCookie userIdCookieName uid)
-            { WC.setCookieExpires = Just expTime
-            }
-      SC.setCookie cookie
+setUserCookie :: DU.UserId -> AppAction ()
+setUserCookie uid = do
+  Time.UTCTime day time <- liftIO Time.getCurrentTime
+  let expTime = Time.UTCTime (Time.addDays 7 day) time
+  let cookie = (SC.makeSimpleCookie userIdCookieName uid)
+        { WC.setCookieExpires = Just expTime
+        }
+  SC.setCookie cookie
+
+getAndRefreshUserCookie :: AppAction DU.UserId
+getAndRefreshUserCookie = do
+  mayUid      <- SC.getCookie userIdCookieName
+  mayValidUid <- case mayUid of
+    Nothing  -> return Nothing
+    Just uid -> do
+      isValid <- lift $ DU.isUserIdValid uid
+      if isValid then return $ Just uid else return Nothing
+  case mayValidUid of
+    Just uid -> do
+      setUserCookie uid
+      return uid
+    Nothing -> do
+      uid <- lift DU.createUserId
+      setUserCookie uid
       return uid
 
 createTestInitializedGameState :: (MonadIO m) => Int -> m GL.GameState
@@ -61,32 +72,32 @@ routes :: ScottyT TL.Text (RIO App) ()
 routes = do
   get "/" $ text "hello"
   post "/creategame" $ do
-    uid  <- getOrSetUserCookie
+    uid  <- getAndRefreshUserCookie
     resp <- lift $ D.createGame $ D.CreateGameRequest uid
     json resp
   post "/joingame/:gid" $ do
-    uid  <- getOrSetUserCookie
+    uid  <- getAndRefreshUserCookie
     gid  <- param "gid"
     resp <- lift $ D.joinGame $ D.JoinGameRequest uid gid
     json resp
   post "/startgame/:gid" $ do
-    uid  <- getOrSetUserCookie
+    uid  <- getAndRefreshUserCookie
     gid  <- param "gid"
     resp <- lift $ D.startGame $ D.StartGameRequest uid gid
     json resp
   post "/makemove/:gid" $ do
-    uid               <- getOrSetUserCookie
+    uid               <- getAndRefreshUserCookie
     gid               <- param "gid"
     (move :: GL.Move) <- jsonData
     resp              <- lift $ D.makeMove $ D.MakeMoveRequest uid gid move
     json resp
-  post "/viewgame/:gid" $ do
-    uid  <- getOrSetUserCookie
+  get "/viewgame/:gid" $ do
+    uid  <- getAndRefreshUserCookie
     gid  <- param "gid"
     resp <- lift $ D.getGameView $ D.GetGameViewRequest uid gid
     json resp
-  post "/listgames" $ do
-    uid  <- getOrSetUserCookie
+  get "/listgames" $ do
+    uid  <- getAndRefreshUserCookie
     resp <- lift $ D.getGamesForUser $ D.GetGamesForUserRequest uid
     json resp
   get "/sample" $ do

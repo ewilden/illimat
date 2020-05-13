@@ -3,10 +3,20 @@ type IndexesTo<T extends string, U> = {
   [K in T]: U
 };
 
+type IndexedBy<T extends string> = {
+  [K in T]: Exclude<any, undefined>;
+};
+
+interface TaggedUnion<T extends string, U> {
+  tag: T;
+  contents: U;
+}
+
 export function match<T extends string, U, O extends IndexesTo<T, (t: T) => U>>
   (tag: T, obj: O): U {
   return obj[tag](tag);
 }
+
 
 const dirs: Direction[] = ["N", "E", "S", "W"];
 
