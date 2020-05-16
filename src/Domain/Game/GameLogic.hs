@@ -508,12 +508,13 @@ fillPlayersHandToN numCards playerIndex = do
     doNTimes (numCards - (length $ _playerHand currPlayer))
              (doAllowingFailure $ dealCardToPlayer playerIndex)
 
-updateWhoseTurn :: Bool -> FailableGameAction ()
-updateWhoseTurn wasRakeSow = do
+updateAndCheckWhoseTurn :: PlayerIndex -> Bool -> FailableGameAction ()
+updateAndCheckWhoseTurn currPlayer wasRakeSow = do
     numPlayers <- withS $ length . _gamePlayerState
     let succpi i = (i + 1) `mod` numPlayers
     (WhoseTurn turnOwner rakeTurn) <- withS _gameWhoseTurn
-    rakeIsOnBoard                  <-
+    checkS (currPlayer == turnOwner) "It's not this player's turn."
+    rakeIsOnBoard <-
         withS
         $ any (\fs -> _fieldLuminary fs == FaceUp Rake)
         . (\gs -> map (flip fieldFromDir gs) (allEnum :: [Direction]))
@@ -528,11 +529,13 @@ updateWhoseTurn wasRakeSow = do
                 { _gameWhoseTurn = WhoseTurn (succpi turnOwner) RakeBoth
                 }
             )
-        (True, RakeSow) -> updateState
-            (\gs -> return $ gs
-                { _gameWhoseTurn = WhoseTurn (succpi turnOwner) RakeBoth
-                }
-            )
+        (True, RakeSow) -> do
+            checkS wasRakeSow "You must sow for the rake."
+            updateState
+                (\gs -> return $ gs
+                    { _gameWhoseTurn = WhoseTurn (succpi turnOwner) RakeBoth
+                    }
+                )
         (True, _) -> updateState
             (\gs -> return $ gs
                 { _gameWhoseTurn = WhoseTurn
@@ -577,12 +580,17 @@ stockpile playerIndex card dir targetStacks desiredStackVal = do
 
     -- All checks passed
     removeCardsFromPlayersHand playerIndex [card]
+    -- re-fill player's hand up to 4
+    resultingPlayer <- getPlayerS playerIndex
+    doNTimes (4 - length (_playerHand resultingPlayer))
+             (doAllowingFailure $ dealCardToPlayer playerIndex)
+
     sequence_ $ map (\stack -> removeCardStackFromField stack dir) targetStacks
     updateState $ mapFieldM
         dir
         (\fs -> return $ fs { _fieldCards = resultingStack : (_fieldCards fs) })
     resolveSeasonChange card dir
-    updateWhoseTurn False
+    updateAndCheckWhoseTurn playerIndex False
 
 sow :: PlayerIndex -> Card -> Direction -> FailableGameAction ()
 sow playerIndex card dir = do
@@ -595,11 +603,17 @@ sow playerIndex card dir = do
     checkNotS (season == Autumn && not fieldHasFaceUpRake)
               "Can't sow because it's autumn!"
     removeCardsFromPlayersHand playerIndex [card]
+
+    -- re-fill player's hand up to 4
+    resultingPlayer <- getPlayerS playerIndex
+    doNTimes (4 - length (_playerHand resultingPlayer))
+             (doAllowingFailure $ dealCardToPlayer playerIndex)
+
     updateState $ mapFieldM
         dir
         (\fs -> return fs { _fieldCards = (fromCard card) : (_fieldCards fs) })
     resolveSeasonChange card dir
-    updateWhoseTurn fieldHasFaceUpRake
+    updateAndCheckWhoseTurn playerIndex fieldHasFaceUpRake
 
 harvest
     :: PlayerIndex
@@ -702,7 +716,7 @@ harvest playerIndex playedCards fieldDir targetStacks = do
                     >> return ()
                 else return ()
         else return ()
-    updateWhoseTurn False
+    updateAndCheckWhoseTurn playerIndex False
 
 setSeason :: Season -> Direction -> FailableGameAction ()
 setSeason Summer dir = do
