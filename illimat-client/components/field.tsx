@@ -29,7 +29,7 @@ const moveButtonClasses = {
 export default function Field(props: Props) {
     const { field, direction } = props;
     const { cards } = field;
-    const isSowSelected = useSelector(selectIsSowSelected);
+    const isSowSelected = true || useSelector(selectIsSowSelected);
     const selectedField = useSelector(selectSelectedField);
     const dispatch = useDispatch();
     return (

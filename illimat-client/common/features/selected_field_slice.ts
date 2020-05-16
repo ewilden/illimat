@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { setGameStateView } from './game_state_view_slice';
+import { setGame } from './game_state_view_slice';
 
 const selectedFieldSlice = createSlice({
     name: 'selectedField',
@@ -11,7 +11,7 @@ const selectedFieldSlice = createSlice({
         },
     },
     extraReducers: builder => {
-        builder.addCase(setGameStateView, (state, action) => {
+        builder.addCase(setGame, (state, action) => {
             return null;
         });
     },

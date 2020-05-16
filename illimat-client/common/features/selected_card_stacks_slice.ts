@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { cardStackToString } from '~/common/game_logic';
-import { setGameStateView } from '~/common/features/game_state_view_slice';
+import { setGame } from '~/common/features/game_state_view_slice';
 
 const selectedCardStacksSlice = createSlice({
     name: 'selectedCardStacks',
@@ -16,7 +16,7 @@ const selectedCardStacksSlice = createSlice({
         },
     },
     extraReducers: builder => {
-        builder.addCase(setGameStateView, (state, action) => {
+        builder.addCase(setGame, (state, action) => {
             return {};
         });
     },

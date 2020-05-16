@@ -78,6 +78,7 @@ library:
     - aeson-typescript
     - base64-bytestring
     - cookie
+    # - http-types
     - mtl
     - random
     - scotty
@@ -86,6 +87,7 @@ library:
     - string-random
     - time
     - triplesec
+    - wai-cors
 
 executables:
   illimatrio-exe:

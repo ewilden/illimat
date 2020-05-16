@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { MoveType } from '~/common/game_logic';
-import { setGameStateView } from './game_state_view_slice';
+import { setGame } from './game_state_view_slice';
 
 const selectedMoveSlice = createSlice({
     name: 'selectedMove',
@@ -12,7 +12,7 @@ const selectedMoveSlice = createSlice({
         },
     },
     extraReducers: builder => {
-        builder.addCase(setGameStateView, (state, action) => {
+        builder.addCase(setGame, (state, action) => {
             return null;
         });
     },

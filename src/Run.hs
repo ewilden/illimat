@@ -7,6 +7,7 @@ where
 
 import qualified Data.Aeson
 import qualified Data.Time                     as Time
+import           Network.Wai.Middleware.Cors
 import qualified RIO.Text.Lazy                 as TL
 import qualified System.Random                 as Random
 import qualified Web.Cookie                    as WC
@@ -70,39 +71,46 @@ createTestInitializedGameState numPlayers = do
 
 routes :: ScottyT TL.Text (RIO App) ()
 routes = do
-  get "/" $ text "hello"
-  post "/creategame" $ do
+  -- middleware $ cors $ const $ Just $ simpleCorsResourcePolicy
+  --   { corsOrigins        = Just (["http://localhost:3004"], True)
+  --   , corsMethods        = ["GET", "POST"]
+  --   , corsRequestHeaders = ["Authorization", "Content-Type"]
+  --   }
+  get "/gameapi/" $ text "hello"
+  post "/gameapi/creategame" $ do
     uid  <- getAndRefreshUserCookie
     resp <- lift $ D.createGame $ D.CreateGameRequest uid
     json resp
-  post "/joingame/:gid" $ do
+  post "/gameapi/joingame/:gid" $ do
     uid  <- getAndRefreshUserCookie
     gid  <- param "gid"
     resp <- lift $ D.joinGame $ D.JoinGameRequest uid gid
     json resp
-  post "/startgame/:gid" $ do
+  post "/gameapi/startgame/:gid" $ do
     uid  <- getAndRefreshUserCookie
     gid  <- param "gid"
     resp <- lift $ D.startGame $ D.StartGameRequest uid gid
     json resp
-  post "/makemove/:gid" $ do
+  post "/gameapi/makemove/:gid" $ do
     uid               <- getAndRefreshUserCookie
     gid               <- param "gid"
     (move :: GL.Move) <- jsonData
     resp              <- lift $ D.makeMove $ D.MakeMoveRequest uid gid move
     json resp
-  get "/viewgame/:gid" $ do
+  get "/gameapi/viewgame/:gid" $ do
     uid  <- getAndRefreshUserCookie
     gid  <- param "gid"
     resp <- lift $ D.getGameView $ D.GetGameViewRequest uid gid
     json resp
-  get "/listgames" $ do
+  get "/gameapi/listgames" $ do
     uid  <- getAndRefreshUserCookie
     resp <- lift $ D.getGamesForUser $ D.GetGamesForUserRequest uid
     json resp
-  get "/sample" $ do
+  get "/gameapi/sample" $ do
     gs <- createTestInitializedGameState 4
     json $ GL.computeViewForPlayer 0 gs
-  get "/:name" $ do
+  get "/gameapi/:name" $ do
     name <- param "name"
     text $ "hello " <> name
+  -- options "/*" $ do
+

@@ -1,0 +1,5 @@
+:3004 
+
+reverse_proxy /gameapi/* :3003
+reverse_proxy /* :3000
+

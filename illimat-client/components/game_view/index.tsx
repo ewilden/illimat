@@ -6,6 +6,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '~/common/reducers';
 import { selectMoveType } from '~/common/features/selected_move_slice';
 import { FieldCard, RenderCardStack } from '../card';
+import { makeMove } from '~/common/features/game_state_view_slice';
 
 const moveButtonClasses = {
     always: " m-1 border border-solid border-1 border-indigo-300 bg-indigo-100 py-2 px-4 rounded ",
@@ -27,12 +28,26 @@ function canTargetFieldCards(moveType: MoveType): boolean {
     return ['Harvest', 'Stockpile'].includes(moveType);
 }
 
+const selectGameId = createSelector((state: RootState) => state.game.gameId, _ => _);
+
+function buildMove(selectedMoveType: MoveType, selectedCards: Card[], selectedCardStacks: CardStack[], selectedField: Direction): Move {
+    switch (selectedMoveType) {
+        case "Harvest":
+            return { tag: "Harvest", contents: [selectedCards, selectedField, selectedCardStacks] };
+        case "Sow":
+            return { tag: "Sow", contents: [selectedCards[0], selectedField] };
+        case "Stockpile":
+            return { tag: "Stockpile", contents: [selectedCards[0], selectedField, selectedCardStacks, 10] };
+    }
+    throw new Error('impossible');
+}
 function YourCurrentMove() {
     const dispatch = useDispatch();
     const selectedMoveType = useSelector(selectSelectedMove);
     const selectedCards = useSelector(selectSelectedCards);
     const selectedStacks = useSelector(selectSelectedCardStacks);
     const selectedField = useSelector(selectSelectedField);
+    const gameId = useSelector(selectGameId);
     const isMoveSendable = selectedMoveType &&
         (canTargetFieldCards(selectedMoveType) ?
             selectedCards.length > 0 && selectedStacks.length > 0 :
@@ -68,7 +83,10 @@ function YourCurrentMove() {
             )}
             {isMoveSendable && (
                 <button className={`mt-4 ${moveButtonClasses.always} ${
-                    moveButtonClasses.notSelected}`}>
+                    moveButtonClasses.notSelected}`}
+                    onClick={e => {
+                        dispatch(makeMove({ gameId, move: buildMove(selectedMoveType, selectedCards, selectedStacks, selectedField!) }));
+                    }}>
                     Commit to your move.
                 </button>
             )}
@@ -76,7 +94,7 @@ function YourCurrentMove() {
     );
 }
 
-export default function GameView({ gameStateView }: { gameStateView: GameStateView }) {
+export default function GameStateView({ gameStateView }: { gameStateView: GameStateView }) {
     const dispatch = useDispatch();
     const selectedMoveType = useSelector(selectSelectedMove);
     const selectedCards = useSelector(selectSelectedCards);
