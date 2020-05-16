@@ -9,6 +9,7 @@ import           Prelude                        ( putStrLn
                                                 , splitAt
                                                 )
 import qualified RIO.Partial                   as Partial
+import qualified RIO.Text
 import           RIO.State
 import           Data.Aeson.TH                  ( )
 import           Data.Aeson.TypeScript.TH
@@ -267,7 +268,7 @@ emptyGameState numPlayers initSummerDir startingDeck startingLuminaryDeck =
               , _gameDeck             = startingDeck
               , _gameUnusedLuminaries = startingLuminaryDeck
               , _gameChildrenCards    = []
-              , _gameWhoseTurn = WhoseTurn (indexFromN initSummerDir) NoRake
+              , _gameWhoseTurn        = WhoseTurn 0 NoRake
               }
   where
     emptyBoard  = BoardState emptyField emptyField emptyField emptyField
@@ -367,7 +368,7 @@ getPlayerS ind = do
         Just player -> return player
 
 returnLeft :: Text -> FailableGameAction a
-returnLeft s = StateT (\_ -> Left s)
+returnLeft s = StateT (\st -> Left $ s <> (RIO.Text.pack $ show st))
 
 removeCardStackFromField :: CardStack -> Direction -> FailableGameAction ()
 removeCardStackFromField cardStack dir = do

@@ -82,6 +82,13 @@ export function RenderCardStack({ cardStack, disableHighlighting }: { cardStack:
         return (
             <div className={shouldHighlight ? classesForIsSelected : "border-dotted border-2 border-gray-400"}
                 tabIndex={0}
+                onClick={() => {
+                    if (!isMyStackSelected) {
+                        dispatch(selectCardStack({ cardStack }));
+                    } else {
+                        dispatch(deselectCardStack({ cardStack }));
+                    }
+                }}
             >
                 <p>[{possibleValues.join(", ")}]</p>
                 <div className="flex flex-col space-y-px">

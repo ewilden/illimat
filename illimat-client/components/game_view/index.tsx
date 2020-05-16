@@ -7,6 +7,7 @@ import { RootState } from '~/common/reducers';
 import { selectMoveType } from '~/common/features/selected_move_slice';
 import { FieldCard, RenderCardStack } from '../card';
 import { makeMove } from '~/common/features/game_state_view_slice';
+import { useState } from 'react';
 
 const moveButtonClasses = {
     always: " m-1 border border-solid border-1 border-indigo-300 bg-indigo-100 py-2 px-4 rounded ",
@@ -30,14 +31,14 @@ function canTargetFieldCards(moveType: MoveType): boolean {
 
 const selectGameId = createSelector((state: RootState) => state.game.gameId, _ => _);
 
-function buildMove(selectedMoveType: MoveType, selectedCards: Card[], selectedCardStacks: CardStack[], selectedField: Direction): Move {
+function buildMove(selectedMoveType: MoveType, selectedCards: Card[], selectedCardStacks: CardStack[], selectedField: Direction, stockpileValue: number): Move {
     switch (selectedMoveType) {
         case "Harvest":
             return { tag: "Harvest", contents: [selectedCards, selectedField, selectedCardStacks] };
         case "Sow":
             return { tag: "Sow", contents: [selectedCards[0], selectedField] };
         case "Stockpile":
-            return { tag: "Stockpile", contents: [selectedCards[0], selectedField, selectedCardStacks, 10] };
+            return { tag: "Stockpile", contents: [selectedCards[0], selectedField, selectedCardStacks, stockpileValue] };
     }
     throw new Error('impossible');
 }
@@ -52,11 +53,13 @@ function YourCurrentMove() {
         (canTargetFieldCards(selectedMoveType) ?
             selectedCards.length > 0 && selectedStacks.length > 0 :
             selectedCards.length > 0 && selectedField);
+    const [stockpileValue, setStockpileValue] = useState<null | number>(null);
 
     return (selectedMoveType ?
         <div className="mt-4">
             <p>Your pending move:</p>
-            <h3 className="text-lg">{selectedMoveType}</h3>
+            <h3 className="text-lg inline">{selectedMoveType}</h3>
+            {selectedMoveType === 'Stockpile' && <span><p className="inline">of value </p><input value={String(stockpileValue)} className="border border-solid border-1 border-indigo-100" onChange={e => setStockpileValue(Number(e.target.value))}></input></span>}
             {selectedCards.length > 0 && (
                 <>
                     <p>
@@ -85,7 +88,7 @@ function YourCurrentMove() {
                 <button className={`mt-4 ${moveButtonClasses.always} ${
                     moveButtonClasses.notSelected}`}
                     onClick={e => {
-                        dispatch(makeMove({ gameId, move: buildMove(selectedMoveType, selectedCards, selectedStacks, selectedField!) }));
+                        dispatch(makeMove({ gameId, move: buildMove(selectedMoveType, selectedCards, selectedStacks, selectedField!, stockpileValue!) }));
                     }}>
                     Commit to your move.
                 </button>
