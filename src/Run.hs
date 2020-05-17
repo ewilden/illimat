@@ -42,6 +42,22 @@ setUserCookie uid = do
         }
   SC.setCookie cookie
 
+getOrCreateUserIdParam :: AppAction DU.UserId
+getOrCreateUserIdParam = do
+  (mayUid :: Maybe Text) <-
+    (Just <$> param "user") `rescue` (\_ -> return Nothing)
+  mayValidUid <- case mayUid of
+    Nothing  -> return Nothing
+    Just uid -> do
+      isValid <- lift $ DU.isUserIdValid uid
+      if isValid then return $ Just uid else return Nothing
+  case mayValidUid of
+    Just uid -> do
+      return uid
+    Nothing -> do
+      uid <- lift DU.createUserId
+      return uid
+
 getAndRefreshUserCookie :: AppAction DU.UserId
 getAndRefreshUserCookie = do
   mayUid      <- SC.getCookie userIdCookieName
@@ -78,32 +94,32 @@ routes = do
   --   }
   get "/gameapi/" $ text "hello"
   post "/gameapi/creategame" $ do
-    uid  <- getAndRefreshUserCookie
+    uid  <- getOrCreateUserIdParam
     resp <- lift $ D.createGame $ D.CreateGameRequest uid
     json resp
   post "/gameapi/joingame/:gid" $ do
-    uid  <- getAndRefreshUserCookie
+    uid  <- getOrCreateUserIdParam
     gid  <- param "gid"
     resp <- lift $ D.joinGame $ D.JoinGameRequest uid gid
     json resp
   post "/gameapi/startgame/:gid" $ do
-    uid  <- getAndRefreshUserCookie
+    uid  <- getOrCreateUserIdParam
     gid  <- param "gid"
     resp <- lift $ D.startGame $ D.StartGameRequest uid gid
     json resp
   post "/gameapi/makemove/:gid" $ do
-    uid               <- getAndRefreshUserCookie
+    uid               <- getOrCreateUserIdParam
     gid               <- param "gid"
     (move :: GL.Move) <- jsonData
     resp              <- lift $ D.makeMove $ D.MakeMoveRequest uid gid move
     json resp
   get "/gameapi/viewgame/:gid" $ do
-    uid  <- getAndRefreshUserCookie
+    uid  <- getOrCreateUserIdParam
     gid  <- param "gid"
     resp <- lift $ D.getGameView $ D.GetGameViewRequest uid gid
     json resp
   get "/gameapi/listgames" $ do
-    uid  <- getAndRefreshUserCookie
+    uid  <- getOrCreateUserIdParam
     resp <- lift $ D.getGamesForUser $ D.GetGamesForUserRequest uid
     json resp
   get "/gameapi/sample" $ do
