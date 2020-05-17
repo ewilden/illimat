@@ -43,7 +43,7 @@ createGame req = do
                          }
         newState = state { _sGames = HM.insert gid newGame $ _sGames state }
     writeTVar tvar newState
-    return $ D.CreateGameResponse (D.computeViewForPlayer 0 newGame) gid
+    return $ D.CreateGameResponse (D.computeViewForPlayer 0 newGame) gid hostId
 
 joinGame
   :: InMemory r m
@@ -77,9 +77,9 @@ joinGame (D.JoinGameRequest uid gid) = do
                     newState =
                       state { _sGames = HM.insert gid newGame $ _sGames state }
                   lift $ writeTVar tvar newState
-                  return $ D.JoinGameResponse $ D.computeViewForPlayer
-                    newPlayerIndex
-                    newGame
+                  return $ D.JoinGameResponse
+                    (D.computeViewForPlayer newPlayerIndex newGame)
+                    uid
               )
 
 startGame
@@ -122,7 +122,7 @@ startGame (D.StartGameRequest uid gid) = do
                 newState =
                   state { _sGames = HM.insert gid newGame $ _sGames state }
             lift $ writeTVar tvar newState
-            return $ D.StartGameResponse $ D.computeViewForPlayer 0 newGame
+            return $ D.StartGameResponse (D.computeViewForPlayer 0 newGame) uid
           (Just 0, GameDataRunning _) ->
             throwError StartGameErrorGameAlreadyStarted
           (Just 0, GameDataFinished _) ->
@@ -162,9 +162,9 @@ makeMove (D.MakeMoveRequest uid gid move) = do
                     newState =
                       state { _sGames = HM.insert gid newGame $ _sGames state }
                   lift $ writeTVar tvar newState
-                  return $ D.MakeMoveResponse $ D.computeViewForPlayer
-                    playerIndex
-                    newGame
+                  return $ D.MakeMoveResponse
+                    (D.computeViewForPlayer playerIndex newGame)
+                    uid
 
 getGameView
   :: InMemory r m
@@ -176,19 +176,15 @@ getGameView (D.GetGameViewRequest uid gid) = do
   runExceptT $ case HM.lookup gid (_sGames state) of
     Nothing   -> throwError D.GetGameViewErrorNoSuchGame
     Just game -> case uid `elemIndex` (D._gamePlayers game) of
-      Nothing -> throwError D.GetGameViewErrorUserNotInGame
-      Just playerIndex ->
-        return $ D.GetGameViewResponse $ D.computeViewForPlayer playerIndex game
+      Nothing          -> throwError D.GetGameViewErrorUserNotInGame
+      Just playerIndex -> return
+        $ D.GetGameViewResponse (D.computeViewForPlayer playerIndex game) uid
 
 getGamesForUser
   :: InMemory r m => D.GetGamesForUserRequest -> m D.GetGamesForUserResponse
 getGamesForUser (D.GetGamesForUserRequest uid) = do
   tvar  <- view gameRelatedStateL
   state <- liftIO $ readTVarIO tvar
-  return
-    $ D.GetGamesForUserResponse
-    $ map _gameId
-    $ concat
-    $ HM.lookup uid
-    $ byUsers
-    $ _sGames state
+  return $ D.GetGamesForUserResponse
+    (map _gameId $ concat $ HM.lookup uid $ byUsers $ _sGames state)
+    uid

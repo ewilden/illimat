@@ -141,18 +141,21 @@ type CreateGameResponse = ICreateGameResponse;
 interface ICreateGameResponse {
   gameView: GameView;
   gameId: string;
+  userId: string;
 }
 
 type JoinGameResponse = IJoinGameResponse;
 
 interface IJoinGameResponse {
   gameView: GameView;
+  userId: string;
 }
 
 type StartGameResponse = IStartGameResponse;
 
 interface IStartGameResponse {
   gameView: GameView;
+  userId: string;
 }
 
 type JoinGameError = "JoinGameErrorAlreadyInGame" | "JoinGameErrorNoSuchGame" | "JoinGameErrorGameAlreadyRunning" | "JoinGameErrorGameAlreadyFinished";
@@ -211,12 +214,14 @@ type MakeMoveResponse = IMakeMoveResponse;
 
 interface IMakeMoveResponse {
   gameStateView: GameView;
+  userId: string;
 }
 
 type GetGameViewResponse = IGetGameViewResponse;
 
 interface IGetGameViewResponse {
   gameView: GameView;
+  userId: string;
 }
 
 type GetGameViewError = "GetGameViewErrorNoSuchGame" | "GetGameViewErrorUserNotInGame";
@@ -225,4 +230,5 @@ type GetGamesForUserResponse = IGetGamesForUserResponse;
 
 interface IGetGamesForUserResponse {
   gameIds: string[];
+  userId: string;
 }

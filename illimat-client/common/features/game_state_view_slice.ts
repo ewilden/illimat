@@ -1,5 +1,6 @@
 import { createSlice, Dispatch } from '@reduxjs/toolkit';
 import * as gameApi from '~/common/game_logic/api';
+import gameApiService from '~/common/game_logic/api_service';
 
 const { matchEither, onR } = gameApi;
 const game = createSlice({
@@ -30,56 +31,37 @@ export const { setGame } = game.actions;
 
 const createGame = () => async (dispatch: Dispatch) => {
     dispatch({ type: "game/createGame" });
-    const response = await gameApi.creategame();
+    const response = await gameApiService.creategame();
     dispatch(setGame(response));
 }
 const joinGame = ({ gameId }: { gameId: string }) => async (dispatch: Dispatch) => {
     dispatch({ type: "game/joinGame", gameId });
-    const response = await gameApi.joingame(gameId);
-    onR(response, r => dispatch(setGame({ gameId, ...r })));
+    const response = await gameApiService.joingame(gameId);
+    dispatch(setGame({ gameId, ...response }));
 }
 const startGame = ({ gameId }: { gameId: string }) => async (dispatch: Dispatch) => {
     dispatch({ type: "game/startGame", gameId });
-    const response = await gameApi.startgame(gameId);
-    onR(response, r => dispatch(setGame({ gameId, ...r })));
+    const response = await gameApiService.startgame(gameId);
+    dispatch(setGame({ gameId, ...response }));
 }
 const makeMove = ({ move, gameId }: { move: Move, gameId: string }) => async (dispatch: Dispatch) => {
     dispatch({ type: "game/makeMove", move, gameId });
-    const response = await gameApi.makemove(gameId, move);
-    matchEither(response, {
-        L: err => { console.log(err); },
-        R: makeMoveResponse => {
-            dispatch(setGame({ gameView: makeMoveResponse.gameStateView, gameId: gameId }));
-            // const gameViewData = makeMoveResponse.gameStateView.data;
-            // switch (gameViewData.tag) {
-            //     case "GameViewRunning": {
-            //         const gameStateView = gameViewData.contents;
-            //         dispatch(setGameStateView({ gameStateView }));
-            //     }
-            //     case "GameViewFinished": {
-            //         console.warn('Game already finished.');
-            //         console.warn(response);
-            //     }
-            //     case "GameViewStarting": {
-            //         console.warn('Game not started yet.');
-            //         console.warn(response);
-            //     }
-            // }
-        }
-    });
+    try {
+        const response = await gameApiService.makemove(gameId, move);
+        dispatch(setGame({ gameView: response.gameStateView, gameId: gameId }));
+    } catch (e) {
+        alert(e);
+    }
 };
 const viewGame = ({ gameId }: { gameId: string }) => async (dispatch: Dispatch) => {
     dispatch({ type: "game/viewGame", gameId });
-    const response = await gameApi.viewgame(gameId);
-    console.log('viewGame happened. matching...')
-    console.log(response);
-    matchEither(response, {
-        R: r => { dispatch(setGame({ gameId, ...r })) },
-        L: _ => {
-            console.log(`viewGame failed, trying joinGame instead`);
-            joinGame({ gameId })(dispatch);
-        },
-    });
+    try {
+        const response = await gameApiService.viewgame(gameId);
+        dispatch(setGame({ gameId, ...response }));
+    } catch (e) {
+        console.log('viewGame failed, trying joinGame instead');
+        joinGame({ gameId })(dispatch);
+    }
 };
 export { createGame, joinGame, startGame, makeMove, viewGame };
 export default game.reducer;

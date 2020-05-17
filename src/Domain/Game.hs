@@ -68,6 +68,7 @@ data CreateGameRequest = CreateGameRequest
 data CreateGameResponse = CreateGameResponse
   { _cgrespGameView :: !GameView
   , _cgrespGameId :: !GameId
+  , _cgrespUserId :: !UserId
   } deriving (Show)
 
 $(deriveJSONAndTypeScript AesonOptions.options ''CreateGameResponse)
@@ -87,6 +88,7 @@ data JoinGameRequest = JoinGameRequest
 
 data JoinGameResponse = JoinGameResponse
   { _jgrespGameView :: !GameView
+  , _jgrespUserId :: !UserId
   } deriving (Show)
 $(deriveJSONAndTypeScript AesonOptions.options ''JoinGameResponse)
 
@@ -97,6 +99,7 @@ data StartGameRequest = StartGameRequest
 
 data StartGameResponse = StartGameResponse
     { _sgrespGameView :: !GameView
+    , _sgrespUserId :: !UserId
     } deriving (Show)
 $(deriveJSONAndTypeScript AesonOptions.options ''StartGameResponse)
 
@@ -127,6 +130,7 @@ data MakeMoveRequest = MakeMoveRequest
 
 data MakeMoveResponse = MakeMoveResponse
   { _mmrespGameStateView :: !GameView
+  , _mmrespUserId :: !UserId
   } deriving (Show, Eq)
 $(deriveJSONAndTypeScript AesonOptions.options ''MakeMoveResponse)
 
@@ -137,6 +141,7 @@ data GetGameViewRequest = GetGameViewRequest
 
 data GetGameViewResponse = GetGameViewResponse
   { _ggvrespGameView :: !GameView
+  , _ggvrespUserId :: !UserId
   } deriving (Show, Eq)
 $(deriveJSONAndTypeScript AesonOptions.options ''GetGameViewResponse)
 
@@ -152,6 +157,7 @@ data GetGamesForUserRequest = GetGamesForUserRequest
 
 data GetGamesForUserResponse = GetGamesForUserResponse
   { _ggfurespGameIds :: ![GameId]
+  , _ggfurespUserId :: !UserId
   } deriving (Show, Eq)
 $(deriveJSONAndTypeScript AesonOptions.options ''GetGamesForUserResponse)
 
