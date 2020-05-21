@@ -9,10 +9,16 @@ function assertRight<L, R>(either: Either<L, R>, errMsg: (l: L) => string): R {
 }
 
 function getPersistedUserId(): string | null {
-    return window.localStorage.getItem('USER_ID');
+    if (typeof window !== 'undefined' && window?.localStorage) {
+        return window.localStorage.getItem('USER_ID');
+    } else {
+        return null;
+    }
 }
 function persistUserId(uid: string): void {
-    window.localStorage.setItem('USER_ID', uid);
+    if (typeof window !== 'undefined' && window?.localStorage) {
+        window.localStorage.setItem('USER_ID', uid);
+    }
 }
 
 function orElse<A>(a: A | null, fallback: A): A {

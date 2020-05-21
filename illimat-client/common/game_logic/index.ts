@@ -42,6 +42,22 @@ const result: SampleResult = match("A" as SampleUnion, {
   D: () => "whatever",
 });
 
+const allCardVals: CardVal[] = ["Fool", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Knight", "Queen", "King"];
+export function showCardVal(cardVal: CardVal): string {
+  switch (cardVal) {
+    case "Fool":
+      return "(1/14) Fool";
+    case "Knight":
+      return "(11) Knight";
+    case "Queen":
+      return "(12) Queen";
+    case "King":
+      return "(13) King";
+    default:
+      return String(Number(allCardVals.indexOf(cardVal)) + 1);
+  }
+}
+
 export function cardToString(card: Card): string {
   const [val, season] = card;
   return `Card(${val},${season})`;

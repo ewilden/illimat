@@ -7,6 +7,7 @@ import rootReducer, { RootState } from '~/common/reducers'
 // import { setGameStateView } from '~/common/features/game_state_view_slice';
 import * as gameApi from '~/common/game_logic/api';
 import { match } from '~/common/game_logic';
+import { setGame } from '~/common/features/game_state_view_slice';
 
 const { matchEither } = gameApi;
 
@@ -15,10 +16,12 @@ const store = configureStore({
 });
 
 export default function Sample() {
+    // const [sampleGame, setSampleGame] = useState<GameStateView | null>(null);
+    useEffect(() => {
+        fetch('/gameapi/sample').then(response => response.json()).then(data => store.dispatch(setGame({ gameId: 'sampleGame', gameView: { data: { tag: "GameViewRunning", contents: data } } })));
+    });
     return (
-        <Provider store={store}>
-            <GameStateViewWithStore />
-        </Provider>
+        <Provider store={store}><GameStateViewWithStore /> </Provider>
     );
 }
 

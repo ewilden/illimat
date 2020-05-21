@@ -1,4 +1,4 @@
-import { match, cardToString } from "~/common/game_logic";
+import { match, cardToString, showCardVal } from "~/common/game_logic";
 import { RootState } from '~/common/reducers';
 import { cardStackToString } from '~/common/game_logic';
 import { selectCardStack, deselectCardStack } from '~/common/features/selected_card_stacks_slice';
@@ -39,7 +39,7 @@ export function FieldCard({ card, isSelected, onClick }: { card: Card, isSelecte
     return (
         <button className={`${isSelected ? cardClasses.selected : cardClasses.notSelected} ${cardClasses.always}`}
             onClick={onClick} tabIndex={onClick ? 0 : -1}>
-            <p>{val}</p>
+            <p>{showCardVal(val)}</p>
             <p className="text-2xl">{renderSeason(season)}</p>
             <p>{season.substring(1)}</p>
         </button>
