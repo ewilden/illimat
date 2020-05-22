@@ -25,6 +25,10 @@ function orElse<A>(a: A | null, fallback: A): A {
     return a === null ? fallback : a;
 }
 
+function showData(data: { tag: string, contents?: any }): string {
+    return data.tag + (data.contents != null ? ' ' + String(data.contents) : '');
+}
+
 class GameApiService {
     private userId: string = orElse(getPersistedUserId(), '');
     private prevTaskPromise: Promise<void> = Promise.resolve();
@@ -62,14 +66,14 @@ class GameApiService {
     startgame(gameId: string): Promise<StartGameResponse> {
         return this.withQueue(async () => {
             const response = await gameApi.startgame({ userId: this.userId, gameId });
-            const result = assertRight(response, err => `StartGame failed: ${err}`);
+            const result = assertRight(response, err => `StartGame failed: ${showData(err)}`);
             return { result, userId: result.userId };
         });
     }
     makemove(gameId: string, move: Move): Promise<MakeMoveResponse> {
         return this.withQueue(async () => {
             const response = await gameApi.makemove({ userId: this.userId, gameId }, move);
-            const result = assertRight(response, err => `MakeMove failed: ${err}`);
+            const result = assertRight(response, err => `MakeMove failed: ${showData(err)}`);
             return { result, userId: result.userId };
         });
     }

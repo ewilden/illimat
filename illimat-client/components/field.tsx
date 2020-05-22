@@ -1,5 +1,5 @@
 import { HandCard, RenderCardStack } from '~/components/card';
-import { cardStackToString } from '~/common/game_logic';
+import { cardStackToString, match } from '~/common/game_logic';
 import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '~/common/reducers';
 import { useSelector, useDispatch } from 'react-redux';
@@ -25,6 +25,18 @@ const moveButtonClasses = {
     selected: " bg-indigo-400 ",
     notSelected: " hover:bg-indigo-200 ",
 };
+
+function ShowLuminaryState(props: { luminaryStateView: LuminaryStateView }) {
+    const { luminaryStateView } = props;
+    switch (luminaryStateView.tag) {
+        case "FaceDownView":
+            return <p>Face-down Luminary.</p>;
+        case "FaceUpView":
+            return <p>{luminaryStateView.contents}</p>;
+        case "NoLuminaryView":
+            return <></>;
+    }
+}
 
 export default function Field(props: Props) {
     const { field, direction } = props;
@@ -53,6 +65,7 @@ export default function Field(props: Props) {
                         }`}
                 >Select Field</button>
             )}
+            <ShowLuminaryState luminaryStateView={field.luminary} />
         </div>
     );
 }

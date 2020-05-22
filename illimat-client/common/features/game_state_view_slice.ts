@@ -41,8 +41,12 @@ const joinGame = ({ gameId }: { gameId: string }) => async (dispatch: Dispatch) 
 }
 const startGame = ({ gameId }: { gameId: string }) => async (dispatch: Dispatch) => {
     dispatch({ type: "game/startGame", gameId });
-    const response = await gameApiService.startgame(gameId);
-    dispatch(setGame({ gameId, ...response }));
+    try {
+        const response = await gameApiService.startgame(gameId);
+        dispatch(setGame({ gameId, ...response }));
+    } catch (e) {
+        alert(e);
+    }
 }
 const makeMove = ({ move, gameId }: { move: Move, gameId: string }) => async (dispatch: Dispatch) => {
     dispatch({ type: "game/makeMove", move, gameId });

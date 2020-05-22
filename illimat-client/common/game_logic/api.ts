@@ -43,19 +43,19 @@ export async function creategame(userId: string): Promise<CreateGameResponse> {
     return myPost(`${apiPrefix}/creategame?user=${userId}`, {});
 }
 
-export async function joingame({ userId, gameId }: Ids): Promise<Either<string, JoinGameResponse>> {
+export async function joingame({ userId, gameId }: Ids): Promise<Either<JoinGameError, JoinGameResponse>> {
     return myPost(`${apiPrefix}/joingame/${gameId}?user=${userId}`, {});
 }
 
-export async function startgame({ userId, gameId }: Ids): Promise<Either<string, StartGameResponse>> {
+export async function startgame({ userId, gameId }: Ids): Promise<Either<StartGameError, StartGameResponse>> {
     return myPost(`${apiPrefix}/startgame/${gameId}?user=${userId}`, {});
 }
 
-export async function makemove({ userId, gameId }: Ids, move: Move): Promise<Either<string, MakeMoveResponse>> {
+export async function makemove({ userId, gameId }: Ids, move: Move): Promise<Either<MakeMoveError, MakeMoveResponse>> {
     return myPost(`${apiPrefix}/makemove/${gameId}?user=${userId}`, move);
 }
 
-export async function viewgame({ userId, gameId }: Ids): Promise<Either<string, GetGameViewResponse>> {
+export async function viewgame({ userId, gameId }: Ids): Promise<Either<GetGameViewError, GetGameViewResponse>> {
     return myGet(`${apiPrefix}/viewgame/${gameId}?user=${userId}`);
 }
 

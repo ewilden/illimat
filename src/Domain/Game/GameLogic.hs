@@ -509,8 +509,8 @@ fillPlayersHandToN numCards playerIndex = do
     doNTimes (numCards - (length $ _playerHand currPlayer))
              (doAllowingFailure $ dealCardToPlayer playerIndex)
 
-updateAndCheckWhoseTurn :: PlayerIndex -> Bool -> FailableGameAction ()
-updateAndCheckWhoseTurn currPlayer wasRakeSow = do
+updateAndCheckWhoseTurn :: PlayerIndex -> Bool -> Bool -> FailableGameAction ()
+updateAndCheckWhoseTurn currPlayer wasRakeSow rakeWasJustRevealed = do
     numPlayers <- withS $ length . _gamePlayerState
     let succpi i = (i + 1) `mod` numPlayers
     (WhoseTurn turnOwner rakeTurn) <- withS _gameWhoseTurn
@@ -519,7 +519,7 @@ updateAndCheckWhoseTurn currPlayer wasRakeSow = do
         withS
         $ any (\fs -> _fieldLuminary fs == FaceUp Rake)
         . (\gs -> map (flip fieldFromDir gs) (allEnum :: [Direction]))
-    case (rakeIsOnBoard, rakeTurn) of
+    case (rakeIsOnBoard && not rakeWasJustRevealed, rakeTurn) of
         (False, _) -> updateState
             (\gs -> return $ gs
                 { _gameWhoseTurn = WhoseTurn (succpi turnOwner) NoRake
@@ -591,7 +591,7 @@ stockpile playerIndex card dir targetStacks desiredStackVal = do
         dir
         (\fs -> return $ fs { _fieldCards = resultingStack : (_fieldCards fs) })
     resolveSeasonChange card dir
-    updateAndCheckWhoseTurn playerIndex False
+    updateAndCheckWhoseTurn playerIndex False False
 
 sow :: PlayerIndex -> Card -> Direction -> FailableGameAction ()
 sow playerIndex card dir = do
@@ -614,7 +614,7 @@ sow playerIndex card dir = do
         dir
         (\fs -> return fs { _fieldCards = (fromCard card) : (_fieldCards fs) })
     resolveSeasonChange card dir
-    updateAndCheckWhoseTurn playerIndex fieldHasFaceUpRake
+    updateAndCheckWhoseTurn playerIndex fieldHasFaceUpRake False
 
 harvest
     :: PlayerIndex
@@ -669,55 +669,50 @@ harvest playerIndex playedCards fieldDir targetStacks = do
     -- check if player has cleared the field
     resultingFieldState <- withS $ fieldFromDir fieldDir
     let fieldNowEmpty = null $ _fieldCards resultingFieldState
-    if fieldNowEmpty
+    rakeWasJustRevealed <- if fieldNowEmpty
         then do
-      -- try to give okus
+            -- try to give okus
             gaveOkus <- doAllowingFailure $ givePlayerOkus playerIndex
 
             -- resolve luminary
-            fieldHadFaceDownLuminary <-
-                case (_fieldLuminary resultingFieldState) of
-                    FaceDown lum -> do
-                        succeededInResolvingLuminary <-
-                            doAllowingFailure
-                                $ resolveLuminaryReveal lum fieldDir
-                        if not succeededInResolvingLuminary
-                            then
-                          -- discard the luminary
-                                 updateState $ mapFieldM
-                                fieldDir
-                                (\fs -> return
-                                    $ fs { _fieldLuminary = NoLuminary }
-                                )
-                            else
-                          -- flip it face-up
-                                 updateState $ mapFieldM
-                                fieldDir
-                                (\fs -> return
-                                    $ fs { _fieldLuminary = FaceUp lum }
-                                )
-                        return True
-                    FaceUp lum -> do
-                        updateState $ mapFieldM
+            mayFacedownLuminary <- case (_fieldLuminary resultingFieldState) of
+                FaceDown lum -> do
+                    succeededInResolvingLuminary <-
+                        doAllowingFailure $ resolveLuminaryReveal lum fieldDir
+                    if not succeededInResolvingLuminary
+                        then
+                    -- discard the luminary
+                             updateState $ mapFieldM
                             fieldDir
                             (\fs -> return $ fs { _fieldLuminary = NoLuminary })
-                        updateState $ mapPlayerM
-                            playerIndex
-                            (\ps -> return $ ps
-                                { _playerLuminaries =
-                                    lum : (_playerLuminaries ps)
-                                }
-                            )
-                        resolveLuminaryTake lum playerIndex
-                        return False
-                    NoLuminary -> return False
+                        else
+                    -- flip it face-up
+                             updateState $ mapFieldM
+                            fieldDir
+                            (\fs -> return $ fs { _fieldLuminary = FaceUp lum })
+                    return $ Just lum
+                FaceUp lum -> do
+                    updateState $ mapFieldM
+                        fieldDir
+                        (\fs -> return $ fs { _fieldLuminary = NoLuminary })
+                    updateState $ mapPlayerM
+                        playerIndex
+                        (\ps -> return $ ps
+                            { _playerLuminaries = lum : (_playerLuminaries ps)
+                            }
+                        )
+                    resolveLuminaryTake lum playerIndex
+                    return Nothing
+                NoLuminary -> return Nothing
 
-            if gaveOkus && (not fieldHadFaceDownLuminary) -- let luminaries resolve re-seeding on reveal
+            if gaveOkus && (isNothing mayFacedownLuminary) -- let luminaries resolve re-seeding on reveal
                 then (doAllowingFailure $ deal3CardsToField fieldDir)
-                    >> return ()
-                else return ()
-        else return ()
-    updateAndCheckWhoseTurn playerIndex False
+                    >> return False
+                else case mayFacedownLuminary of
+                    Just Rake -> return True
+                    _         -> return False
+        else return False
+    updateAndCheckWhoseTurn playerIndex False rakeWasJustRevealed
 
 setSeason :: Season -> Direction -> FailableGameAction ()
 setSeason Summer dir = do
