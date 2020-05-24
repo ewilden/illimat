@@ -87,7 +87,11 @@ library:
     - string-random
     - time
     - triplesec
+    - wai
     - wai-cors
+    - wai-websockets
+    - warp
+    - websockets
 
 executables:
   illimatrio-exe:

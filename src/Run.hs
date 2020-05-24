@@ -7,7 +7,11 @@ where
 
 import qualified Data.Aeson
 import qualified Data.Time                     as Time
-import           Network.Wai.Middleware.Cors
+import qualified Network.Wai                   as Wai
+import qualified Network.Wai.Handler.Warp      as Warp
+import qualified Network.Wai.Handler.WebSockets
+                                               as WaiSock
+import qualified Network.WebSockets            as Sock
 import qualified RIO.Text.Lazy                 as TL
 import qualified System.Random                 as Random
 import qualified Web.Cookie                    as WC
@@ -23,9 +27,15 @@ import qualified Domain.User                   as DU
 run :: RIO App ()
 run = do
   logInfo "Starting application"
-  port <- getOption optionsPort
-  app  <- ask
-  scottyT port (runRIO app) routes
+  port         <- getOption optionsPort
+  app          <- ask
+  scottyWaiApp <- scottyAppT (runRIO app) routes
+  let withSockApp = WaiSock.websocketsOr Sock.defaultConnectionOptions
+                                         sockApp
+                                         scottyWaiApp
+  liftIO $ Warp.run port withSockApp
+
+
 
 type AppScotty a = ScottyT TL.Text (RIO App) a
 type AppAction a = ActionT TL.Text (RIO App) a
@@ -52,11 +62,8 @@ getOrCreateUserIdParam = do
       isValid <- lift $ DU.isUserIdValid uid
       if isValid then return $ Just uid else return Nothing
   case mayValidUid of
-    Just uid -> do
-      return uid
-    Nothing -> do
-      uid <- lift DU.createUserId
-      return uid
+    Just uid -> return uid
+    Nothing  -> lift DU.createUserId
 
 getAndRefreshUserCookie :: AppAction DU.UserId
 getAndRefreshUserCookie = do
@@ -130,3 +137,14 @@ routes = do
     text $ "hello " <> name
   -- options "/*" $ do
 
+sockApp :: Sock.ServerApp
+sockApp pending_conn = do
+  conn <- Sock.acceptRequest pending_conn
+  let loop =
+        (do
+          Sock.sendTextData conn ("Hello Evan!" :: Text)
+          (stuff :: Text) <- Sock.receiveData conn
+          Sock.sendTextData conn ("Echoing: " <> stuff)
+          loop
+        )
+  loop

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 596551855a60221e8224d2dcfd9bd8782764e71118b282ae1dddc366c4c274df
+-- hash: 3ce587467fc4e13d214da97cf5857c8891e5551c3d764d3e92c5cbc2270f8e90
 
 name:           illimatrio
 version:        0.1.0.0
@@ -58,7 +58,11 @@ library
     , string-random
     , time
     , triplesec
+    , wai
     , wai-cors
+    , wai-websockets
+    , warp
+    , websockets
   default-language: Haskell2010
 
 executable illimatrio-exe
