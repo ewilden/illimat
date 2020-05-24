@@ -5,17 +5,17 @@ import qualified System.Random as Random
 
 import qualified Domain.Auth as D.Auth
 import qualified GameLogic as GL
-import qualified Prelude as Prelude ((!!))
+import qualified Prelude ((!!))
 
 type GameId = Text
 
-data Game = Game 
+data Game = Game
   { _gameId :: GameId
   , _gameData :: GameData
   , _gamePlayers :: [D.Auth.UserId]
   } deriving (Show)
 
-data GameData 
+data GameData
   = GameDataRunning RunningGame
   | GameDataStarting StartingGame
   | GameDataFinished FinishedGame
@@ -26,28 +26,28 @@ data GameView = GameView
   } deriving (Show, Eq)
 
 computeViewForPlayer :: GL.PlayerIndex -> Game -> GameView
-computeViewForPlayer playerIndex (Game gid gameData players) = 
+computeViewForPlayer playerIndex (Game gid gameData players) =
   GameView $ case gameData of
     GameDataStarting g -> GameViewStarting g
     GameDataFinished g -> GameViewFinished g
-    GameDataRunning (RunningGame gameState) -> 
+    GameDataRunning (RunningGame gameState) ->
       GameViewRunning $ GL.computeViewForPlayer playerIndex gameState
 
-data GameViewData 
+data GameViewData
   = GameViewRunning GL.GameStateView
   | GameViewStarting StartingGame
   | GameViewFinished FinishedGame
   deriving (Show, Eq)
 
 data RunningGame = RunningGame
-  { _rgGameState :: GL.GameState 
+  { _rgGameState :: GL.GameState
   } deriving (Show)
 
-data StartingGame = StartingGame 
-  { _sgMaxNumPlayers :: Int 
+data StartingGame = StartingGame
+  { _sgMaxNumPlayers :: Int
   } deriving (Show, Eq)
 
-data FinishedGame 
+data FinishedGame
   = FinishedGame
   deriving (Show, Eq)
 
@@ -65,7 +65,7 @@ data CreateGameError
   = CreateGameErrorUnsupportedNumPlayers
   deriving (Show, Eq)
 
-data JoinGameError 
+data JoinGameError
   = JoinGameErrorTooManyPlayers
   | JoinGameErrorAlreadyInGame
   | JoinGameErrorNoSuchGame
@@ -74,15 +74,15 @@ data JoinGameError
   deriving (Show, Eq)
 
 data JoinGameRequest = JoinGameRequest
-  { _jgreqUserId :: D.Auth.UserId 
-  , _jgreqGameId :: GameId 
+  { _jgreqUserId :: D.Auth.UserId
+  , _jgreqGameId :: GameId
   } deriving (Show, Eq)
 
 data JoinGameResponse = JoinGameResponse
   { _jgrespGameView :: GameView
   } deriving (Show)
 
-data MakeMoveError 
+data MakeMoveError
   = MakeMoveErrorInvalidMove Text
   | MakeMoveErrorNoSuchGame
   | MakeMoveErrorPlayerNotInGame
@@ -109,7 +109,7 @@ data GetGameViewResponse = GetGameViewResponse
   { _ggvrespGameView :: GameView
   } deriving (Show, Eq)
 
-data GetGameViewError 
+data GetGameViewError
   = GetGameViewErrorNoSuchGame
   | GetGameViewErrorUserNotInGame
   deriving (Show, Eq)
@@ -127,15 +127,15 @@ class Monad m => GameRepo m where
   joinGame :: JoinGameRequest -> m (Either JoinGameError JoinGameResponse)
   makeMove :: MakeMoveRequest -> m (Either MakeMoveError MakeMoveResponse)
   getGameView :: GetGameViewRequest -> m (Either GetGameViewError GetGameViewResponse)
-  getGamesForUser :: GetGamesForUserRequest -> m (GetGamesForUserResponse)
+  getGamesForUser :: GetGamesForUserRequest -> m GetGamesForUserResponse
 
 shuffle :: (Random.RandomGen g) => [a] -> g -> ([a], g)
-shuffle x g = if length x < 2 then (x, g) else 
+shuffle x g = if length x < 2 then (x, g) else
   let
     (i, g') = Random.randomR (0, length(x) - 1) g
     (r, g'') = shuffle (take i x ++ drop (i+1) x) g'
   in
-    ((x Prelude.!! i : r), g'')
+    (x Prelude.!! i : r, g'')
 
 initEmptyGameState :: (Random.RandomGen g) => Int -> g -> (GL.GameState, g)
 initEmptyGameState numPlayers g0 =
@@ -145,5 +145,5 @@ initEmptyGameState numPlayers g0 =
       (shuffledDeck, g1) = shuffleCardsFor numPlayers g0
       (shuffledLums, g2) = shuffle GL.allLuminaries g1
       (shuffledDirs, g3) = shuffle (GL.allEnum :: [GL.Direction]) g2
-  in 
-    ((GL.emptyGameState numPlayers (shuffledDirs Prelude.!! 0) shuffledDeck shuffledLums), g3)
+  in
+    (GL.emptyGameState numPlayers (shuffledDirs Prelude.!! 0) shuffledDeck shuffledLums, g3)

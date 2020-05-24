@@ -18,9 +18,16 @@ packages:
       sha256: 21c7e61fceea98d14b453fc74c947b715ce33fe4c665c65b1f28c6f417d4ab7e
   original:
     hackage: string-random-0.1.2.0@sha256:db4f801dec1ec72cba7d662b9774da60ff54de6d05478e94478d6d730dc5034f,2439
+- completed:
+    hackage: postgresql-simple-migration-0.1.15.0@sha256:0e24e96908430f5caf9c1c1d9ca7c5c108e4e0409a255e2cbd77e8cd252dbb02,3879
+    pantry-tree:
+      size: 766
+      sha256: c2843bfe43b804992bc913f33ec6b2c6cb0fc99c6d931b6ff85894e8aef9a99e
+  original:
+    hackage: postgresql-simple-migration-0.1.15.0@sha256:0e24e96908430f5caf9c1c1d9ca7c5c108e4e0409a255e2cbd77e8cd252dbb02,3879
 snapshots:
 - completed:
-    size: 523541
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/23.yaml
-    sha256: f761fe419a1a44fc3ef47f5bfb1853304d13320fc72b45d2798c08d21dabc23c
-  original: lts-14.23
+    size: 491373
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/15/3.yaml
+    sha256: 29e9ff61b8bf4b4fcff55cde3ac106ebb971f0d21331dccac9eee63374fa6ca8
+  original: lts-15.3
